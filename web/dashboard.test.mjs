@@ -1,0 +1,8 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {validateCustomer} from './customer.mjs';
+import {dashboardSummary} from './dashboard.mjs';
+import {auction,settle,review} from './sales-engine.mjs';
+const customer=()=>({id:'CUS-001',type:'company',legalName:'Test customer',contactName:'Test contact',email:'test@example.com',phone:'000',address:'Test address',taxId:'',branch:'HQ',payment:'prepaid'});
+test('customer required fields, email and optional tax identifier',()=>{assert.ok(Object.isFrozen(validateCustomer(customer())));assert.throws(()=>validateCustomer({...customer(),email:'bad'}));assert.throws(()=>validateCustomer({...customer(),address:''}));assert.throws(()=>validateCustomer({...customer(),taxId:'123'}));});
+test('dashboard updates balances and customer snapshot stays attached to billing',()=>{const c={name:'Test',owner:'Owner',customer:customer(),budget:10000,target:['adult'],gender:'all',artA:0,artB:1,bids:{S1:5000,S2:0,S3:0,S4:0,S5:0}},events=[];const {event}=auction(c,events,'S1','P1',()=>0);c.customer.legalName='edited';assert.equal(event.customer.legalName,'Test customer');assert.ok(Object.isFrozen(event.customer));assert.equal(dashboardSummary(c,events).held,5000);settle(event,'completed');assert.equal(dashboardSummary(c,events).pending,1);review(event,'reject','wrong target');const s=dashboardSummary(c,events);assert.equal(s.refund,5000);assert.equal(s.net,0);assert.equal(s.available,10000);assert.equal(s.pending,0);assert.equal(s.completed,1);});
+test('draft dashboard reports empty state without invented revenue',()=>{assert.deepEqual(dashboardSummary(null,[]),{budget:0,available:0,held:0,charged:0,refund:0,net:0,completed:0,pending:0});});

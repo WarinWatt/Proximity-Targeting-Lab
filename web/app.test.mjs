@@ -1,0 +1,31 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+test('UI renders ten choices, comparison pairs, walking and playback without browser',async()=>{
+ const html=await readFile(new URL('./index.html',import.meta.url),'utf8');
+ const nodes=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],{innerHTML:'',textContent:'',value:m[1]==='mode'?'independent':m[1]==='inspect'?'S1':'',querySelector:()=>({focus(){}}),scrollIntoView(){}}]));
+ globalThis.document={getElementById:id=>{assert.ok(nodes.has(id),'missing DOM id '+id);return nodes.get(id);}};
+ await import('./app.mjs');
+ assert.equal((nodes.get('personas').innerHTML.match(/data-person=/g)||[]).length,10);
+ assert.match(nodes.get('personas').innerHTML,/person overlap/);
+ assert.match(nodes.get('pair-matches').innerHTML,/ไม่ตรงเพศเป้าหมาย/);
+ assert.match(nodes.get('content-library').innerHTML,/เพศ:/);
+ nodes.get('pair').value='5';nodes.get('pair').onchange();assert.match(nodes.get('pair-summary').textContent,/label ช่วงอายุเหมือนกัน/);
+ nodes.get('pair-people').onclick({target:{closest:()=>({dataset:{person:'P6'}})}});assert.match(nodes.get('selected').innerHTML,/P6/);
+ nodes.get('all').onclick();assert.match(nodes.get('candidates').innerHTML,/เพศ:/);assert.match(nodes.get('candidates').innerHTML,/เพศไม่ตรงกลุ่มเป้าหมาย/);
+ nodes.get('personas').onclick({target:{closest:()=>({dataset:{person:'P1'}})}});
+ nodes.get('walk').onclick();assert.match(nodes.get('count').textContent,/คนไม่ซ้ำ 1 คน/);
+ nodes.get('all').onclick();assert.match(nodes.get('count').textContent,/ตรวจพบ 5 ครั้ง/);assert.ok(nodes.get('walk').disabled);
+ assert.match(nodes.get('screens').innerHTML,/Exact Everyday/);
+ assert.match(nodes.get('candidates').innerHTML,/Partial 66.7%/);
+ assert.match(nodes.get('formula-policy').textContent,/Score = Bid \(บาท\) × M/);
+ nodes.get('advance').onclick();assert.match(nodes.get('screens').innerHTML,/Modern Collection/);
+ nodes.get('personas').onclick({target:{closest:()=>({dataset:{person:'P4'}})}});assert.match(nodes.get('selected').innerHTML,/P4/);assert.match(nodes.get('count').textContent,/ตรวจพบ 0 ครั้ง/);
+ nodes.get('all').onclick();nodes.get('inspect').value='S2';nodes.get('inspect').onchange();assert.match(nodes.get('explanation').textContent,/Senior Layers/);
+ nodes.get('personas').onclick({target:{closest:()=>({dataset:{person:'P1'}})}});
+ nodes.get('ranking').value='price';nodes.get('ranking').onchange();assert.match(nodes.get('count').textContent,/ตรวจพบ 0 ครั้ง/);
+ nodes.get('walk').onclick();assert.match(nodes.get('explanation').textContent,/High Bid Casual/);assert.match(nodes.get('formula-example').textContent,/กันเงิน ฿28.00/);
+ nodes.get('matching').value='full';nodes.get('matching').onchange();nodes.get('walk').onclick();assert.match(nodes.get('explanation').textContent,/Exact Everyday/);
+
+ delete globalThis.document;
+});

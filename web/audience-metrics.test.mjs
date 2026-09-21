@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {summarize,ageBand} from './audience-metrics.mjs';
+test('viewer subset, empty denominator and age gaps are explicit',()=>{assert.equal(summarize([]).rate,null);assert.equal(ageBand(22),'นอกช่วงเดิม');assert.equal(ageBand(null),'Unknown');const m=summarize([{gender:'Male',age:26,relation:'alone',viewed:true},{gender:'Female',age:65,relation:'alone',viewed:false}]);assert.equal(m.people,2);assert.equal(m.viewers,1);assert.equal(m.rate,.5);assert.equal(m.groups[0].gender.Male,1);});

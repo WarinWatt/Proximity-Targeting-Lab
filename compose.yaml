@@ -1,0 +1,28 @@
+services:
+  web:
+    build: .
+    ports:
+      - "127.0.0.1:${WEB_PORT:-8090}:80"
+    environment:
+      PROXIMITY_DB_HOST: db
+      PROXIMITY_CONFIG: /data/proximity-config.json
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?copy .env.example to .env and change the password}
+    volumes:
+      - app_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: mariadb:11.8.8
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?copy .env.example to .env and change the password}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+volumes:
+  app_data:
+  db_data:

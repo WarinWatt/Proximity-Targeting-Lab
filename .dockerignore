@@ -1,0 +1,11 @@
+.git
+.env
+data
+openpar/.venv
+openpar/__pycache__
+**/__pycache__
+*.py[cod]
+openpar/download-parts*
+openpar/*.part
+openpar/PA100k_Checkpoint*.pth*
+*.log

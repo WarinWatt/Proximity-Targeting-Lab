@@ -1,0 +1,3 @@
+export const ageBands=[[0,2],[4,6],[8,12],[15,20],[25,32],[38,43],[48,53],[60,100]];
+export function ageBand(age){if(age===null)return 'Unknown';const b=ageBands.find(([a,z])=>age>=a&&age<=z);return b?b.join('–'):'นอกช่วงเดิม';}
+export function summarize(rows){const count=(list,key)=>list.reduce((a,r)=>{const k=key==='age'?ageBand(r.age):r[key];a[k]=(a[k]||0)+1;return a;},{});const viewers=rows.filter(r=>r.viewed);return {people:rows.length,viewers:viewers.length,rate:rows.length?viewers.length/rows.length:null,groups:[viewers,rows].map(list=>({gender:count(list,'gender'),relation:count(list,'relation'),age:count(list,'age')}))};}

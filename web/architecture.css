@@ -1,0 +1,16 @@
+/* Architecture-only diagrams; retain the Lab's shared navigation and ERD. */
+.arch-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:16px}
+.arch-grid article{padding:18px;border:1px solid var(--line,#ccd9d2);border-top:4px solid var(--green,#12664f);border-radius:8px;background:#f5f9f6}
+.arch-grid h3{margin-top:0;font-size:1.05rem}
+.arch-grid p{margin-bottom:0;line-height:1.8}
+.arch-connector{text-align:center;padding:12px;color:#12664f;font-weight:600}
+.arch-flow{display:flex;flex-wrap:wrap;gap:12px;list-style:none;padding:0;counter-reset:step}
+.arch-flow li{counter-increment:step;flex:1 1 170px;padding:16px;border:1px solid var(--line,#ccd9d2);border-radius:8px;background:#f5f9f6;line-height:1.7}
+.arch-flow li:before{content:counter(step) ' →';display:block;color:#12664f;font-weight:700;margin-bottom:8px}
+.arch-flow span{display:block;margin-top:8px;font-size:.95rem}
+.arch-state,.arch-formula{padding:18px;border-left:4px solid #12664f;background:#edf5f0;line-height:2;overflow-wrap:anywhere}
+section[id]{scroll-margin-top:24px}
+main>section p{line-height:1.85}
+nav[aria-label="Architecture sections"]{flex-wrap:wrap}
+nav[aria-label="Product architecture sections"]{flex-wrap:wrap}
+nav[aria-label="Operations architecture sections"]{flex-wrap:wrap}

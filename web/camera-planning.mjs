@@ -1,0 +1,2 @@
+import {ageBand} from './audience-metrics.mjs';
+export function cameraPlanning(rows,screens,target={}){return screens.map(s=>{const seen=rows.filter(r=>r.screen===s.id);const matched=seen.filter(r=>(!target.gender||r.gender===target.gender)&&(!target.age||ageBand(r.age)===target.age));const groups={};for(const r of seen){const key=r.gender+' / '+ageBand(r.age);groups[key]=(groups[key]||0)+1;}return {...s,total:seen.length,matched:matched.length,viewers:matched.filter(r=>r.viewed).length,groups};});}

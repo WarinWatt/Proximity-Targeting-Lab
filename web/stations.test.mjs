@@ -1,0 +1,2 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {initialStations} from './stations.mjs';import {screens} from './engine.mjs';
+test('five integrated stations share simulator names and camera IDs',()=>{const rows=initialStations();assert.equal(rows.length,5);assert.deepEqual(rows.map(x=>[x.id,x.camera,x.name]),screens.map(x=>[x.id,x.camera,x.name]));for(const field of ['id','camera','location'])assert.equal(new Set(rows.map(x=>x[field])).size,5);rows[0].name='changed';assert.equal(initialStations()[0].name,screens[0].name);});

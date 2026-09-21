@@ -1,0 +1,8 @@
+import {entities,relations} from './schema.mjs';
+export {entities};
+const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+function box(name,x,y){const fields=entities[name],h=52+fields.length*20;return '<g><rect class="entity" x="'+x+'" y="'+y+'" width="440" height="'+h+'" rx="6"/><text x="'+(x+14)+'" y="'+(y+25)+'" font-weight="600">'+esc(name)+'</text>'+fields.map((f,i)=>'<text x="'+(x+14)+'" y="'+(y+48+i*20)+'" style="font-size:13px">'+esc(f)+'</text>').join('')+'</g>';}
+export function renderERD(diagrams,tables){
+ diagrams.innerHTML=Object.keys(entities).map(name=>{const refs=relations.filter(r=>r.from===name);const height=Math.max(210,refs.length*175);return '<details><summary>'+esc(name)+' · '+refs.length+' foreign keys</summary><div class="erd-scroll"><svg class="erd-svg" style="min-width:1180px" viewBox="0 0 1180 '+height+'" role="img" aria-label="'+esc(name)+' relationships">'+box(name,10,20)+refs.map((r,i)=>'<path class="edge" d="M 450 55 H 480 V '+(i*175+55)+' H 720"/><text class="rel" x="495" y="'+(i*175+35)+'">'+esc(r.field)+'</text><text class="rel" x="495" y="'+(i*175+55)+'">'+esc(r.cardinality)+'</text>'+box(r.to,720,i*175+20)).join('')+'</svg></div></details>';}).join('');
+ tables.innerHTML='<table><thead><tr><th>Table</th><th>Fields</th><th>Foreign keys / cardinality</th></tr></thead><tbody>'+Object.entries(entities).map(([name,fields])=>'<tr><td>'+esc(name)+'</td><td>'+fields.map(esc).join('<br>')+'</td><td>'+relations.filter(r=>r.from===name).map(r=>esc(r.field+' → '+r.to+' ('+r.cardinality+')')).join('<br>')+'</td></tr>').join('')+'</tbody></table>';
+}
