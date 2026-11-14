@@ -16,3 +16,33 @@ jobs:
         with:
           node-version: 22
       - run: node --test web/*.test.mjs
+  database-tests:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: test-root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install PDO MySQL
+        run: sudo apt-get update && sudo apt-get install -y php-mysql
+      - name: Bootstrap current pilot schema
+        env:
+          PROXIMITY_DB_HOST: 127.0.0.1
+          MARIADB_ROOT_PASSWORD: test-root-password
+          PROXIMITY_CONFIG: /tmp/proximity-config.json
+        run: |
+          php web/setup-local.php
+          php web/cycle-migrate.php
+          php bin/migrate.php
+          php bin/migrate.php
+          php bin/check-invariants.php
+          php bin/test-database.php

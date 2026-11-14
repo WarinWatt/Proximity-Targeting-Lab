@@ -52,6 +52,8 @@ Generated fictional personas, advertising panels, and deployment mockups are doc
 
 See `web/architecture.html`, `web/SINGLE-SCREEN.md`, and `web/references.html` for detailed design and limitations.
 
+The reviewed Central database direction, accepted invariants, phased delivery plan, and decisive acceptance tests are recorded in `docs/central-database-plan.md`. Executable migrations under `db/migrations` are authoritative for implemented Central tables; the larger JavaScript ERD remains research scope, not deployed schema.
+
 ## License
 
 Project-authored source code is MIT licensed. Third-party code in `openpar/vendor/OpenPAR` retains its upstream license. Model weights, datasets, referenced papers, and generated/media assets are not automatically covered by the project code license; review their provenance and terms separately.

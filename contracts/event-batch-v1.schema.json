@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://warin.me/schemas/proximity/event-batch-v1.json",
+  "type": "object",
+  "required": ["protocol_version", "station_id", "boot_epoch", "first_seq", "last_seq", "events"],
+  "properties": {
+    "protocol_version": {"const": 1},
+    "station_id": {"type": "integer", "minimum": 1},
+    "boot_epoch": {"type": "string", "format": "uuid"},
+    "first_seq": {"type": "integer", "minimum": 1},
+    "last_seq": {"type": "integer", "minimum": 1},
+    "events": {"type": "array", "maxItems": 100, "items": {"type": "object", "required": ["event_key", "seq", "type", "occurred_at", "monotonic_ms", "payload"], "properties": {"event_key": {"type": "string", "maxLength": 120}, "seq": {"type": "integer", "minimum": 1}, "type": {"enum": ["play", "attention", "health"]}, "occurred_at": {"type": "string", "format": "date-time"}, "monotonic_ms": {"type": "integer", "minimum": 0}, "manifest_id": {"type": ["integer", "null"]}, "lease_id": {"type": ["integer", "null"]}, "metric_version_id": {"type": ["integer", "null"]}, "payload": {"type": "object"}}, "additionalProperties": false}}
+  },
+  "additionalProperties": false
+}

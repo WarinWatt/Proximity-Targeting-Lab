@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://warin.me/schemas/proximity/manifest-v1.json",
+  "type": "object",
+  "required": ["protocol_version", "station_id", "version", "valid_until", "assets", "campaigns", "leases"],
+  "properties": {
+    "protocol_version": {"const": 1},
+    "station_id": {"type": "integer", "minimum": 1},
+    "version": {"type": "integer", "minimum": 1},
+    "valid_until": {"type": "string", "format": "date-time"},
+    "assets": {"type": "array", "items": {"type": "object", "required": ["sha256", "bytes", "uri"], "properties": {"sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "bytes": {"type": "integer", "minimum": 1}, "uri": {"type": "string"}}, "additionalProperties": false}, "uniqueItems": true},
+    "campaigns": {"type": "array", "items": {"type": "object", "required": ["campaign_id", "creative_id", "media_sha256", "price_minor", "targeting"], "properties": {"campaign_id": {"type": "integer"}, "creative_id": {"type": "integer"}, "media_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "price_minor": {"type": "integer", "minimum": 0}, "targeting": {"type": "object"}}, "additionalProperties": false}},
+    "leases": {"type": "array", "items": {"type": "object", "required": ["lease_id", "campaign_id", "cap_minor", "expires_at"], "properties": {"lease_id": {"type": "integer"}, "campaign_id": {"type": "integer"}, "cap_minor": {"type": "integer", "minimum": 0}, "expires_at": {"type": "string", "format": "date-time"}}, "additionalProperties": false}}
+  },
+  "additionalProperties": false
+}
