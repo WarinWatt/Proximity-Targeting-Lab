@@ -1,0 +1,22 @@
+// Maintain this register with every page change; status is evidence, not a completion estimate.
+export const pageReports={
+ 'owner.html':{area:'เจ้าของระบบ / รายรับและสุขภาพบริการ',done:'สรุป charge, refund, net, งบกันไว้ และคิวตรวจบิลจาก MariaDB พร้อมตรวจสิทธิ์ owner',pending:'device heartbeat จริง, monitoring alert และ payment/invoice integration',evidence:'bin/test-http.mjs, browser smoke checks',metric:'ledger reconciliation / pending review / database query latency'},
+ 'index.html':{area:'STP / การเลือกและแสดงโฆษณา',done:'เพิ่ม 10 สถานการณ์และกันงบรวม premium พร้อม budget snapshots รายจอ',pending:'เชื่อม simulation กับ device evidence และ benchmark ระบบจริง',evidence:'scenarios.test.mjs, engine.test.mjs',metric:'ความถูกต้องของผู้ชนะ / budget overspend / duplicate charge / decision latency'},
+ 'campaigns.html':{area:'ต้นแบบฝั่งเจ้าของผลิตภัณฑ์ / ขายโฆษณา',done:'มีต้นแบบ customer details, bid รายจอ, A/B และตรวจบิลย้อนหลัง',pending:'เชื่อมข้อมูลกลางและตรวจสิทธิ์ทุก API; workflow ซื้อ campaign จริง',evidence:'sales.test.mjs, dashboard.test.mjs',metric:'task success / time to purchase / charge-refund reconciliation'},
+ 'operator.html':{area:'ต้นแบบฝั่งผู้ให้บริการ',done:'มีต้นแบบสถานี location + camera + screen',pending:'heartbeat จริง, cache checksum, offline replay และ CRUD ที่บันทึกกลาง',evidence:'stations.test.mjs',metric:'uptime / cache hit / recovery time / playback failure'},
+ 'openpar.html':{area:'ประชากรศาสตร์ / annotation / engagement',done:'มี interface กล้องและคลิป กับรายการ attributes',pending:'ยืนยัน inference จริง, dataset provenance, annotation agreement และ evaluation gate; ยังไม่มีผลความแม่นยำยืนยัน',evidence:'openpar.test.mjs ตรวจ interface/contract เท่านั้น',metric:'macro-F1 / balanced accuracy / age MAE / gaze precision / FPS / p95 latency'},
+ 'audience-dashboard.html':{area:'วิเคราะห์ผู้ชมและสนับสนุนการซื้อ campaign',done:'มีต้นแบบสรุปผู้ชมรายกล้อง',pending:'ข้อมูลจริง, unique counting ที่ตรวจสอบได้ และช่วงความไม่แน่นอน',evidence:'audience-metrics.test.mjs',metric:'จำนวนผ่าน / จำนวนมอง / dwell time / segment distribution'},
+ 'architecture.html':{area:'ระบบรวมศูนย์และกระจาย / ความพร้อมต้นแบบ',done:'มี schema registry, ERD และ subsystem design',pending:'เทียบ schema กับ migration ล่าสุดและบันทึก deployment benchmark',evidence:'architecture.test.mjs',metric:'throughput / p50,p95,p99 latency / CPU,GPU,RAM / watts'},
+ 'references.html':{area:'ทบทวนวรรณกรรมและ research gap',done:'มี reference และ motivation',pending:'ตรวจ citation, license และแยกผลรายงานเดิมจากผลระบบปัจจุบัน',evidence:'รายการแหล่งอ้างอิงในหน้า',metric:'baseline comparison / ablation / ข้อจำกัดการนำไปใช้'},
+ 'single-screen.html':{area:'วงจรโฆษณาถึง billing',done:'API รองรับ 5 สถานี งบร่วม คำสั่งซ้ำ charge/refund และ manual engagement telemetry ผูก playback; telemetry ไม่คิดเงิน',pending:'device proof, gaze validation, offline synchronization และ payment provider',evidence:'bin/test-http.mjs, bin/test-cycle.php, docs/RELEASE-2026-11-15.md',metric:'end-to-end success / no duplicate billing / net ledger balance'}
+};
+export function mountPageReport(){
+ const key=location.pathname.split('/').pop()||'index.html';
+ const r=pageReports[key]||{area:'บริการสนับสนุนระบบ',done:'มี interface ต้นแบบ',pending:'ทดสอบการเชื่อม workflow และ role permissions',evidence:'ต้องเพิ่มผลทดสอบเฉพาะหน้า',metric:'task success / API error / authorization failures'};
+ const panel=document.createElement('details');panel.className='selected-info';
+ const title=document.createElement('summary');title.textContent='บันทึกการพัฒนา / หลักฐานสำหรับรายงาน';panel.append(title);
+ for(const [label,value] of [['อัปเดต','15 พฤศจิกายน 2569'],['ส่วนงาน FF69',r.area],['มีแล้ว',r.done],['ยังต้องทำ',r.pending],['หลักฐาน',r.evidence],['ตัวชี้วัดที่จะเก็บ',r.metric],['ขอบเขตผล','ข้อมูลจำลองและ software tests ยังไม่ใช่ผลความแม่นยำโมเดล ผลการทดลองกับคน หรือผลตอบแทนทางธุรกิจ']]){const p=document.createElement('p');p.textContent=label+': '+value;panel.append(p);}
+ const button=document.createElement('button');button.textContent='ดาวน์โหลดบันทึกหน้านี้ (JSON)';button.onclick=()=>{const url=URL.createObjectURL(new Blob([JSON.stringify({page:key,date:'2026-11-15',...r},null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=key.replace('.html','')+'-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};panel.append(button);
+ document.querySelector('main')?.append(panel);
+}
+if(typeof document!=='undefined')mountPageReport();

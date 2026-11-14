@@ -1,9 +1,10 @@
 export const entities={
+ cycle_attention:['PK id','FK run_id','observation_key UNIQUE, clip_ms, looking_ms, stopped_ms, confidence, source, metric_version, payload_hash, billable=false; append-only manual telemetry'],
  cycle_campaigns:['PK id','FK user_id','title, target, bid, budget, spent, sha, mime, media (pilot <=8MB); LIVE'],
- cycle_runs:['PK id','FK station_id, campaign_id','request_key (unique), target, price, state, trace_json, started_at, completed_at, review, reason; LIVE'],
+ cycle_runs:['PK id','FK station_id, campaign_id','request_key (unique), request_payload_sha256 (nullable for legacy requests), target, price, state, trace_json, started_at, completed_at, review, reason; queued/playing price reserves campaign budget; LIVE'],
  cycle_ledger:['PK id','FK run_id','kind, amount, created_at; UNIQUE(run_id,kind); LIVE'],
  auth_users:['PK id','username (unique), password_hash, role; LIVE MariaDB users'],
- central_stations:['PK id','name, active; LIVE MariaDB stations (one integrated station)'],
+ central_stations:['PK id','name, active; LIVE MariaDB stations (five integrated stations; cycle station_id defaults to 1)'],
  auth_attempts:['PK id','ip, attempted_at; LIVE'],
  audit_events:['PK id','FK user_id','action, entity_id (logical reference), created_at; LIVE'],
  deployment_stations:['PK station_id','FK location_id (unique), camera_id (unique), screen_id (unique)','name, active; one integrated location + webcam + screen'],
@@ -105,6 +106,7 @@ Object.assign(entities,{
 entities.campaigns.push('FK customer_id');
 entities.playback_plans.push('FK assignment_id, price_id (nullable)');
 export const relations=[
+ {from:'cycle_attention',field:'run_id',to:'cycle_runs',cardinality:'N → 1'},
  {from:'cycle_campaigns',field:'user_id',to:'auth_users',cardinality:'N → 1'},
  {from:'cycle_runs',field:'station_id',to:'central_stations',cardinality:'N → 1'},
  {from:'cycle_runs',field:'campaign_id',to:'cycle_campaigns',cardinality:'N → 1'},

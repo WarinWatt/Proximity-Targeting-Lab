@@ -1,0 +1,32 @@
+import assert from 'node:assert/strict';
+import http from 'node:http';
+const base=process.env.TEST_BASE_URL||'http://127.0.0.1:8090/';
+async function client(role){
+ let cookie='',csrf='';
+ const call=async(action,body,extra={})=>{const response=await fetch(base+'api.php?action='+action,{method:body?'POST':'GET',headers:{cookie,...(body?{'Content-Type':'application/json','X-CSRF-Token':csrf,Origin:new URL(base).origin}:{}),...extra},...(body?{body:JSON.stringify(body)}:{})});const set=response.headers.getSetCookie();if(set.length)cookie=set.map(s=>s.split(';')[0]).join('; ');const data=await response.json();if(data.csrf)csrf=data.csrf;return {status:response.status,data};};
+ await call('session');if(role)assert.equal((await call('login',{username:role+'.demo',password:'LabTest!2026-'+role})).status,200);
+ return call;
+}
+const anonymous=await client();assert.equal((await anonymous('stations')).status,401);
+const customer=await client('customer');assert.equal((await customer('station',{id:1,name:'denied',active:true})).status,403);assert.equal((await customer('owner-summary')).status,403);assert.equal((await customer('system-health')).status,403);
+assert.equal((await customer('station',{id:1,name:'denied'}, {'X-CSRF-Token':'bad'})).status,403);
+assert.equal((await customer('logout',{}, {Origin:'https://evil.invalid'})).status,403);
+const operator=await client('operator');assert.equal((await operator('stations')).status,200);assert.equal((await operator('system-health')).status,200);assert.equal((await operator('owner-summary')).status,403);
+const reviewer=await client('reviewer');assert.equal((await reviewer('station',{id:1,name:'denied',active:true})).status,403);
+const owner=await client('owner');assert.equal((await owner('owner-summary')).status,200);
+const media=Buffer.from('000000186674797069736f6d0000020069736f6d69736f32','hex').toString('base64');
+const bought=await customer('cycle-buy',{title:'HTTP acceptance '+Date.now(),target:'any',bid:1200,budget:2400,media});assert.equal(bought.status,200,JSON.stringify(bought.data));
+const campaigns=(await operator('cycle-list')).data.campaigns;const campaign=campaigns.find(c=>Number(c.id)===bought.data.id);assert.ok(campaign);
+const sessions=await Promise.all(Array.from({length:5},()=>client('operator')));
+const bids=await Promise.all(sessions.map((call,i)=>call('cycle-auction',{key:crypto.randomUUID(),station_id:i+1,target:'adult',ready:{[campaign.id]:campaign.sha}})));
+assert.ok(bids.every(r=>r.status===200),JSON.stringify(bids));assert.equal(bids.filter(r=>r.data.id).length,2);
+const active=bids.map((r,i)=>({id:r.data.id,station_id:i+1})).filter(r=>r.id);const first=active[0];
+assert.equal((await operator('cycle-start',first)).status,200);assert.equal((await operator('cycle-finish',first)).status,200);assert.equal((await operator('cycle-finish',first)).status,200);
+const observation={id:first.id,key:crypto.randomUUID(),clip_ms:15000,looking_ms:7600,stopped_ms:8000,confidence:0.95};
+assert.equal((await operator('cycle-attention',observation)).data.billable,false);assert.equal((await operator('cycle-attention',observation)).data.duplicate,true);assert.equal((await operator('cycle-attention',{...observation,looking_ms:5000})).status,409);
+assert.equal((await reviewer('cycle-review',{...first,decision:'refunded',reason:'HTTP acceptance refund'})).status,200);
+for(const run of active.slice(1))assert.equal((await operator('cycle-cancel',run)).status,200);
+const entries=(await operator('cycle-list')).data.ledger.filter(l=>Number(l.run_id)===Number(first.id));assert.equal(entries.reduce((n,l)=>n+Number(l.amount),0),0);assert.equal(entries.length,2);
+for(const name of ['setup-local.php','cycle-migrate.php','cycle-api.php'])assert.equal((await fetch(base+name)).status,403);
+const hostStatus=await new Promise((resolve,reject)=>http.get(base+'api.php?action=session',{headers:{Host:'unlisted.invalid'}},r=>{r.resume();resolve(r.statusCode);}).on('error',reject));assert.equal(hostStatus,403);
+console.log('HTTP role isolation, CSRF, origin, host and setup protection passed');

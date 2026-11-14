@@ -1,5 +1,6 @@
+import {getSession} from './session-client.mjs';
 const $=id=>document.getElementById(id);let csrf='';
-async function session(){const r=await fetch('api.php?action=session');const d=await r.json();if(!r.ok)throw Error(d.error);csrf=d.csrf;$('status').textContent=d.user?'เข้าสู่ระบบ: '+d.user.username+' / '+d.user.role:'ยังไม่เข้าสู่ระบบ';return d;}
+async function session(){const d=await getSession(Boolean(csrf));csrf=d.csrf;$('status').textContent=d.user?'เข้าสู่ระบบ: '+d.user.username+' / '+d.user.role:'ยังไม่เข้าสู่ระบบ';return d;}
 if(['localhost','127.0.0.1'].includes(location.hostname)){ $('demo').hidden=false;for(const role of ['customer','operator','reviewer','owner']){const p=document.createElement('p');p.textContent=role+'.demo / LabTest!2026-'+role;$('accounts').append(p);}}
 $('login').onsubmit=async e=>{e.preventDefault();try{await session();const r=await fetch('api.php?action=login',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({username:$('username').value,password:$('password').value})});const d=await r.json();if(!r.ok)throw Error(d.error);csrf=d.csrf;$('password').value='';await session();}catch(e){$('status').textContent=e.message;}};
 $('logout').onclick=async()=>{try{await fetch('api.php?action=logout',{method:'POST',headers:{'X-CSRF-Token':csrf}});await session();}catch(e){$('status').textContent=e.message;}};session().catch(e=>$('status').textContent=e.message);

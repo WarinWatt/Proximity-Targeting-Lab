@@ -13,6 +13,6 @@ $root->exec('CREATE TABLE IF NOT EXISTS users(id INT AUTO_INCREMENT PRIMARY KEY,
 $root->exec('CREATE TABLE IF NOT EXISTS stations(id INT AUTO_INCREMENT PRIMARY KEY,name VARCHAR(80) NOT NULL,active BOOLEAN NOT NULL DEFAULT 1)');
 $root->exec('CREATE TABLE IF NOT EXISTS audit_events(id BIGINT AUTO_INCREMENT PRIMARY KEY,user_id INT NOT NULL,action VARCHAR(80) NOT NULL,entity_id INT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,FOREIGN KEY(user_id) REFERENCES users(id))');
 $root->exec('CREATE TABLE IF NOT EXISTS auth_attempts(id BIGINT AUTO_INCREMENT PRIMARY KEY,ip VARCHAR(64),attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,INDEX(ip,attempted_at))');
-foreach(['customer','operator','reviewer','owner'] as $role){$q=$root->prepare('INSERT IGNORE INTO users(username,password_hash,role) VALUES (?,?,?)');$q->execute([$role.'.demo',password_hash('LabTest!2026-'.$role,PASSWORD_DEFAULT),$role]);}
+if(getenv('PROXIMITY_CREATE_DEMOS')==='1')foreach(['customer','operator','reviewer','owner'] as $role){$q=$root->prepare('INSERT IGNORE INTO users(username,password_hash,role) VALUES (?,?,?)');$q->execute([$role.'.demo',password_hash('LabTest!2026-'.$role,PASSWORD_DEFAULT),$role]);}
 $q=$root->prepare('INSERT IGNORE INTO stations(id,name) VALUES (?,?)');foreach(['ประตูทางเข้า','โถงยอดนิยม','หน้าร้านค้า','ทางเดิน','ทางออก'] as $i=>$name)$q->execute([$i+1,$name]);
 file_put_contents($path,json_encode($config));chmod($path,0640);echo "Local database ready\n";

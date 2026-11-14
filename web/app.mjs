@@ -1,6 +1,8 @@
 import {segments,personas,screens,campaigns,initial,held,available,matched,walk,advance} from './engine.mjs?v=4';
 
 import {mountComparison} from './comparison.mjs?v=4';
+import {mountScenarios} from './scenarios.mjs';
+mountScenarios();
 const genderText=c=>c.gender==='all'?'ทุกเพศ':segments[c.gender];
 const $=id=>document.getElementById(id),money=n=>'฿'+(n/100).toFixed(2),campaign=id=>campaigns.find(c=>c.id===id),tags=list=>list.map(t=>'<span class="tag">'+segments[t]+'</span>').join('');
 const art=(i,type='person')=>'<span class="atlas '+type+(type==='person'&&i>=5?' overlap':'')+'" style="--panel:'+(i%5)+'" role="img" aria-label="ภาพ'+(type==='person'?'ตัวละคร':'โฆษณา')+'จำลอง '+(i+1)+'"></span>';

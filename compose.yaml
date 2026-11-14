@@ -6,6 +6,7 @@ services:
     environment:
       PROXIMITY_DB_HOST: db
       PROXIMITY_CONFIG: /data/proximity-config.json
+      PROXIMITY_CREATE_DEMOS: "1"
       MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?copy .env.example to .env and change the password}
     volumes:
       - app_data:/data

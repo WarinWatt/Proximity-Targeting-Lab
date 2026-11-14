@@ -10,7 +10,9 @@ This repository is an independent research project. It is not part of [`COINCIDE
 - Multi-label full/partial matching with visible exclusion and ranking reasons.
 - Campaign sales simulation, per-screen prices, A/B assignment, two-tier pricing experiments, charge/refund history, audience and operator dashboards.
 - MariaDB-backed local authentication for customer, operator, reviewer, and owner roles.
-- A bounded single-screen persistent pilot: buy campaign, verify browser cache by SHA-256, simulate target observation, allocate by bid, play cached media, settle on completion, and review/refund.
+- A persistent five-station pilot: buy campaign, verify browser cache by SHA-256, simulate target observation, allocate shared budgets transactionally, play cached media, settle on completion, and review/refund.
+- Shared role navigation, owner revenue/DB health, ten advanced simulation scenarios and per-page report evidence registers.
+- Append-only manual attention telemetry; engagement does not generate pilot charges.
 - Optional local OpenPAR PromptPAR PA100K inference for 26 pedestrian attributes.
 
 This is **not production ad tech**. Most five-screen flows remain browser simulations. The single-screen flow is persistent, but browser reports are not trusted device proof. No payment provider, invoice system, real gaze verification, cross-camera identity, or production fleet monitoring is included. Appearance-based age/gender labels can be wrong and must not be treated as identity facts.
@@ -21,7 +23,7 @@ This is **not production ad tech**. Most five-screen flows remain browser simula
 2. Run `docker compose up --build`.
 3. Open `http://127.0.0.1:8090/index.html` (or the configured `WEB_PORT`).
 
-The local bootstrap creates four clearly marked test accounts. Their passwords are shown only when the hostname is `localhost` or `127.0.0.1`. The API itself rejects non-local hostnames in this research build. Remove demo account creation and local-only restrictions before designing any deployment.
+Docker development explicitly enables four demo accounts. Public hosts reject demo logins. Production bootstrap leaves demos disabled; use the CLI provisioner for private role accounts. Host allowlists, exact HTTPS origins and secure cookies protect public deployments. See `docs/DEPLOYMENT.md`.
 
 Run frontend/unit tests with:
 
@@ -48,7 +50,7 @@ Generated fictional personas, advertising panels, and deployment mockups are doc
 - Passwords are hashed; session cookies are HTTP-only and same-site; modifying requests require CSRF tokens and local origins.
 - Database credentials are generated into a Docker volume and `.env` is ignored.
 - Uploaded pilot clips are limited to 8 MB and stored in MariaDB only for the bounded local pilot. A production design should use dedicated media storage.
-- Never expose this build directly to the internet. Add real identity management, HTTPS, device credentials, authorization tests, retention controls, backups, migrations, observability, and an evidence policy first.
+- Public deployment is a research pilot with HTTPS, role authorization, backups and immutable ledger protections. Trusted device proof, real engagement validation, payment processing and production fleet monitoring remain release gates for monetary use.
 
 See `web/architecture.html`, `web/SINGLE-SCREEN.md`, and `web/references.html` for detailed design and limitations.
 

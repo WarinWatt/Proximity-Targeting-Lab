@@ -1,28 +1,45 @@
 <?php
 declare(strict_types=1);
+ini_set('display_errors','0');
 header('Content-Type: application/json; charset=utf-8');header('Cache-Control: no-store');
 function reply(int $code,array $data): never {http_response_code($code);echo json_encode($data,JSON_UNESCAPED_UNICODE);exit;}
-// Demo credentials and API are deliberately unavailable on public hostnames.
-$host=parse_url('http://'.($_SERVER['HTTP_HOST']??''),PHP_URL_HOST);
-if(!in_array($host,['localhost','127.0.0.1'],true))reply(403,['error'=>'Local test environment only']);
-session_name('proximity_lab');session_set_cookie_params(['httponly'=>true,'samesite'=>'Strict','path'=>'/pages/content-decision-lab/','secure'=>false]);session_start();
+$host=strtolower((string)parse_url('http://'.($_SERVER['HTTP_HOST']??''),PHP_URL_HOST));
+$local=in_array($host,['localhost','127.0.0.1'],true);
+$allowed=array_filter(array_map('trim',explode(',',getenv('PROXIMITY_ALLOWED_HOSTS')?:'localhost,127.0.0.1')));
+if(!in_array($host,$allowed,true))reply(403,['error'=>'Host denied']);
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: same-origin');
+ini_set('session.use_strict_mode','1');ini_set('session.use_only_cookies','1');
+$cookiePath=rtrim(str_replace('\\','/',dirname($_SERVER['SCRIPT_NAME']??'/api.php')),'/').'/';
+session_name('proximity_lab');session_set_cookie_params(['httponly'=>true,'samesite'=>'Strict','path'=>$cookiePath,'secure'=>!$local]);session_start();
+if(isset($_SESSION['last_seen'])&&time()-$_SESSION['last_seen']>1800){$_SESSION=[];session_regenerate_id(true);}
+$_SESSION['last_seen']=time();
 try{$configPath=getenv('PROXIMITY_CONFIG')?:'/var/lib/data-systems-lab/data/proximity-config.json';$config=json_decode(file_get_contents($configPath),true,512,JSON_THROW_ON_ERROR);$dbHost=getenv('PROXIMITY_DB_HOST')?:'warin_db';$db=new PDO("mysql:host={$dbHost};dbname=proximity_lab;charset=utf8mb4",$config['user'],$config['password'],[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);}catch(Throwable $e){reply(503,['error'=>'Database unavailable']);}
-$action=$_GET['action']??'session';$method=$_SERVER['REQUEST_METHOD'];$body=json_decode(file_get_contents('php://input'),true)??[];
+$action=$_GET['action']??'session';$method=$_SERVER['REQUEST_METHOD'];
+if(!in_array($method,['GET','POST'],true)){header('Allow: GET, POST');reply(405,['error'=>'Method not allowed']);}
+if((int)($_SERVER['CONTENT_LENGTH']??0)>12*1024*1024)reply(413,['error'=>'Request too large']);
+$raw=file_get_contents('php://input');$body=[];
+if($raw!==''){try{$body=json_decode($raw,true,32,JSON_THROW_ON_ERROR);if(!is_array($body))reply(422,['error'=>'JSON object required']);}catch(JsonException $e){reply(400,['error'=>'Invalid JSON']);}}
 if(!isset($_SESSION['csrf']))$_SESSION['csrf']=bin2hex(random_bytes(24));
 if($method==='POST'){
- $originHost=parse_url($_SERVER['HTTP_ORIGIN']??'',PHP_URL_HOST);if(!in_array($originHost,['localhost','127.0.0.1'],true))reply(403,['error'=>'Origin denied']);
+ $expectedOrigin=($local?'http':'https').'://'.($_SERVER['HTTP_HOST']??'');if(($_SERVER['HTTP_ORIGIN']??'')!==$expectedOrigin)reply(403,['error'=>'Origin denied']);
  if(!hash_equals($_SESSION['csrf'],$_SERVER['HTTP_X_CSRF_TOKEN']??''))reply(403,['error'=>'CSRF denied']);
 }
 if($action==='session')reply(200,['user'=>$_SESSION['user']??null,'csrf'=>$_SESSION['csrf']]);
 if($action==='login'&&$method==='POST'){
+ if(!$local&&str_ends_with(strtolower((string)($body['username']??'')),'.demo'))reply(403,['error'=>'Demo accounts are disabled on public hosts']);
  $ip=$_SERVER['REMOTE_ADDR']??'unknown';$q=$db->prepare('SELECT COUNT(*) FROM auth_attempts WHERE ip=? AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)');$q->execute([$ip]);if((int)$q->fetchColumn()>=30)reply(429,['error'=>'Too many attempts; retry after 15 minutes']);
  $db->prepare('INSERT INTO auth_attempts(ip) VALUES (?)')->execute([$ip]);
  $q=$db->prepare('SELECT id,username,password_hash,role FROM users WHERE username=?');$q->execute([(string)($body['username']??'')]);$u=$q->fetch(PDO::FETCH_ASSOC);
  if(!$u||!password_verify((string)($body['password']??''),$u['password_hash']))reply(401,['error'=>'Username or password incorrect']);
+ if(password_needs_rehash($u['password_hash'],PASSWORD_DEFAULT))$db->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash((string)$body['password'],PASSWORD_DEFAULT),$u['id']]);
  session_regenerate_id(true);unset($u['password_hash']);$_SESSION['user']=$u;$_SESSION['csrf']=bin2hex(random_bytes(24));reply(200,['user'=>$u,'csrf'=>$_SESSION['csrf']]);
 }
 if($action==='logout'&&$method==='POST'){$_SESSION=[];session_destroy();reply(200,['ok'=>true]);}
 $user=$_SESSION['user']??null;if(!$user)reply(401,['error'=>'Login required']);
+session_write_close(); // Allow concurrent station requests; DB transactions enforce shared budgets.
+if(in_array($action,['owner-summary','system-health'],true))require __DIR__.'/health-api.php';
+if($action==='cycle-attention')require __DIR__.'/attention-api.php';
 if(str_starts_with($action,'cycle-'))require __DIR__.'/cycle-api.php';
 if($action==='stations'&&$method==='GET')reply(200,['stations'=>$db->query('SELECT * FROM stations ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]);
 if($action==='station'&&$method==='POST'){

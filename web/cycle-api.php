@@ -17,21 +17,36 @@ if($action==='cycle-buy'){
  $db->prepare('INSERT INTO cycle_campaigns(user_id,title,target,bid,budget,sha,mime,media) VALUES (?,?,?,?,?,?,?,?)')->execute([$user['id'],$title,$target,$bid,$budget,hash('sha256',$raw),$mime,$raw]);reply(200,['id'=>(int)$db->lastInsertId()]);
 }
 roleCycle($action==='cycle-review'?['reviewer','owner']:['operator','owner']);
+$stationId=cycleInt($body['station_id']??1,1,PHP_INT_MAX);
+// Reads after campaign lock waits must see other stations' committed reservations.
+$db->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');
 $db->beginTransaction();try{
- // Single station serializes allocation, settlement and refund; same lock order everywhere.
- $station=$db->query('SELECT * FROM stations WHERE id=1 FOR UPDATE')->fetch(PDO::FETCH_ASSOC);if(!$station)throw new RuntimeException('Station missing');
+ // All writers: station, campaigns in ascending ID order, then run.
+ $q=$db->prepare('SELECT * FROM stations WHERE id=? FOR UPDATE');$q->execute([$stationId]);$station=$q->fetch(PDO::FETCH_ASSOC);if(!$station)throw new RuntimeException('Station missing');
  if($action==='cycle-auction'){
   $key=(string)($body['key']??'');if(!preg_match('/^[a-zA-Z0-9-]{16,80}$/',$key))throw new RuntimeException('Invalid request key');
-  $q=$db->prepare('SELECT id FROM cycle_runs WHERE request_key=?');$q->execute([$key]);if($id=$q->fetchColumn()){$db->commit();reply(200,['id'=>$id]);}
+  $target=$body['target']??'';if(!in_array($target,['adult','senior'],true))throw new RuntimeException('Invalid simulated target');
+  $ready=$body['ready']??[];if(!is_array($ready))throw new RuntimeException('Invalid cache readiness');
+  foreach($ready as $campaign=>$sha){if(!ctype_digit((string)$campaign)||!is_string($sha)||!preg_match('/^[a-f0-9]{64}$/D',$sha))throw new RuntimeException('Invalid cache readiness');}
+  ksort($ready,SORT_NUMERIC);$payloadHash=hash('sha256',json_encode([$stationId,$target,$ready],JSON_THROW_ON_ERROR));
+  $q=$db->prepare('SELECT id,station_id,request_payload_sha256 FROM cycle_runs WHERE request_key=?');$q->execute([$key]);if($existing=$q->fetch(PDO::FETCH_ASSOC)){
+   if((int)$existing['station_id']!==$stationId||!is_string($existing['request_payload_sha256'])||!hash_equals($existing['request_payload_sha256'],$payloadHash))throw new RuntimeException('Request key conflicts with station or payload');
+   $db->commit();reply(200,['id'=>(int)$existing['id']]);
+  }
   if(!$station['active'])throw new RuntimeException('Station archived');
-  if($db->query("SELECT id FROM cycle_runs WHERE state IN ('queued','playing') LIMIT 1")->fetchColumn())throw new RuntimeException('Finish or cancel the current slot first');
-  $target=$body['target']??'';if(!in_array($target,['adult','senior'],true))throw new RuntimeException('Invalid simulated target');$ready=$body['ready']??[];$trace=[];$winner=null;
-  foreach($db->query('SELECT id,target,bid,budget,spent,sha FROM cycle_campaigns ORDER BY bid DESC,id ASC')->fetchAll(PDO::FETCH_ASSOC) as $c){$why=[];if($c['target']!=='any'&&$c['target']!==$target)$why[]='target mismatch';if(!isset($ready[$c['id']])||!hash_equals($c['sha'],(string)$ready[$c['id']]))$why[]='cache not ready';if($c['budget']-$c['spent']<$c['bid'])$why[]='insufficient budget';$trace[]=['campaign'=>$c['id'],'bid'=>$c['bid'],'reasons'=>$why];if(!$why&&!$winner)$winner=$c;}
+  $q=$db->prepare("SELECT id FROM cycle_runs WHERE station_id=? AND state IN ('queued','playing') LIMIT 1");$q->execute([$stationId]);if($q->fetchColumn())throw new RuntimeException('Finish or cancel the current slot first');
+  $campaigns=$db->query('SELECT id,target,bid,budget,spent,sha FROM cycle_campaigns ORDER BY id ASC FOR UPDATE')->fetchAll(PDO::FETCH_ASSOC);
+  $reserved=[];foreach($db->query("SELECT campaign_id,SUM(price) AS reserved FROM cycle_runs WHERE state IN ('queued','playing') GROUP BY campaign_id")->fetchAll(PDO::FETCH_ASSOC) as $reservation)$reserved[$reservation['campaign_id']]=(int)$reservation['reserved'];
+  usort($campaigns,fn($a,$b)=>((int)$b['bid']<=>(int)$a['bid'])?:((int)$a['id']<=>(int)$b['id']));$trace=[];$winner=null;
+  foreach($campaigns as $c){$why=[];if($c['target']!=='any'&&$c['target']!==$target)$why[]='target mismatch';if(!isset($ready[$c['id']])||!hash_equals($c['sha'],(string)$ready[$c['id']]))$why[]='cache not ready';if($c['budget']-$c['spent']-($reserved[$c['id']]??0)<$c['bid'])$why[]='insufficient budget';$trace[]=['campaign'=>$c['id'],'bid'=>$c['bid'],'reasons'=>$why];if(!$why&&!$winner)$winner=$c;}
   if(!$winner){$db->commit();reply(200,['id'=>null,'trace'=>$trace,'message'=>'No eligible campaign; no charge']);}
-  $db->prepare("INSERT INTO cycle_runs(station_id,campaign_id,request_key,target,price,state,trace_json) VALUES (1,?,?,?,?, 'queued',?)")->execute([$winner['id'],$key,$target,$winner['bid'],json_encode($trace)]);$id=(int)$db->lastInsertId();$db->commit();reply(200,['id'=>$id,'trace'=>$trace]);
+  $db->prepare("INSERT INTO cycle_runs(station_id,campaign_id,request_key,request_payload_sha256,target,price,state,trace_json) VALUES (?,?,?,?,?,?, 'queued',?)")->execute([$stationId,$winner['id'],$key,$payloadHash,$target,$winner['bid'],json_encode($trace)]);$id=(int)$db->lastInsertId();$db->commit();reply(200,['id'=>$id,'trace'=>$trace]);
  }
- $id=(int)($body['id']??0);$q=$db->prepare('SELECT * FROM cycle_runs WHERE id=? FOR UPDATE');$q->execute([$id]);$r=$q->fetch(PDO::FETCH_ASSOC);if(!$r)throw new RuntimeException('Run missing');
+ $id=(int)($body['id']??0);$q=$db->prepare('SELECT campaign_id FROM cycle_runs WHERE id=? AND station_id=?');$q->execute([$id,$stationId]);$campaignId=$q->fetchColumn();if(!$campaignId)throw new RuntimeException('Run missing at station');
+ $q=$db->prepare('SELECT id FROM cycle_campaigns WHERE id=? FOR UPDATE');$q->execute([$campaignId]);if(!$q->fetchColumn())throw new RuntimeException('Campaign missing');
+ $q=$db->prepare('SELECT * FROM cycle_runs WHERE id=? AND station_id=? FOR UPDATE');$q->execute([$id,$stationId]);$r=$q->fetch(PDO::FETCH_ASSOC);if(!$r||(int)$r['campaign_id']!==(int)$campaignId)throw new RuntimeException('Run changed');
  if($action==='cycle-start'){
+  if(!$station['active'])throw new RuntimeException('Station archived');
   if($r['state']==='queued')$db->prepare("UPDATE cycle_runs SET state='playing',started_at=NOW(6) WHERE id=?")->execute([$id]);elseif($r['state']!=='playing')throw new RuntimeException('Cannot start this state');
  }elseif($action==='cycle-finish'){
   if($r['state']==='playing'){$db->prepare("INSERT INTO cycle_ledger(run_id,kind,amount) VALUES (?,'charge',?)")->execute([$id,$r['price']]);$db->prepare('UPDATE cycle_campaigns SET spent=spent+? WHERE id=?')->execute([$r['price'],$r['campaign_id']]);$db->prepare("UPDATE cycle_runs SET state='completed',completed_at=NOW(6),review='pending' WHERE id=?")->execute([$id]);}elseif($r['state']!=='completed')throw new RuntimeException('Start playback first');
