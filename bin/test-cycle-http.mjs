@@ -22,7 +22,7 @@ async function session(){
 let campaign;
 try {
  const clients=await Promise.all(Array.from({length:5},()=>session()));
- campaign=Number(sql(`if($db->query("SELECT COUNT(*) FROM cycle_runs WHERE station_id BETWEEN 1 AND 5 AND state IN ('queued','playing')")->fetchColumn())throw new RuntimeException('Stations must be idle before HTTP test');$q=$db->prepare("INSERT INTO cycle_campaigns(user_id,title,target,bid,budget,sha) SELECT id,?,'any',1200,2400,? FROM users WHERE username='owner.demo'");$q->execute(['${prefix}','${sha}']);echo $db->lastInsertId();`));
+ campaign=Number(sql(`if($db->query("SELECT COUNT(*) FROM cycle_runs WHERE station_id BETWEEN 1 AND 5 AND state IN ('queued','playing')")->fetchColumn())throw new RuntimeException('Stations must be idle before HTTP test');$q=$db->prepare("INSERT INTO cycle_campaigns(user_id,title,target,bid,budget,sha,funded,escrow_minor) SELECT id,?,'any',1200,2400,?,1,2400 FROM users WHERE username='owner.demo'");$q->execute(['${prefix}','${sha}']);echo $db->lastInsertId();`));
  const payload={target:'adult',ready:{[campaign]:sha}};
  const results=await Promise.all(clients.map((client,i)=>client('cycle-auction',{...payload,station_id:i+1,key:`${prefix}-${i}`})));
  for(const result of results)assert.equal(result.status,200,JSON.stringify(result));

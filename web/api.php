@@ -38,6 +38,7 @@ if($action==='login'&&$method==='POST'){
 if($action==='logout'&&$method==='POST'){$_SESSION=[];session_destroy();reply(200,['ok'=>true]);}
 $user=$_SESSION['user']??null;if(!$user)reply(401,['error'=>'Login required']);
 session_write_close(); // Allow concurrent station requests; DB transactions enforce shared budgets.
+if($action==='wallet'||str_starts_with($action,'wallet-'))require __DIR__.'/wallet-api.php';
 if(in_array($action,['owner-summary','system-health','owner-stations','owner-station'],true))require __DIR__.'/health-api.php';
 if($action==='cycle-attention')require __DIR__.'/attention-api.php';
 if(str_starts_with($action,'cycle-'))require __DIR__.'/cycle-api.php';

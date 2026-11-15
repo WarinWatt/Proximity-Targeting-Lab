@@ -19,6 +19,11 @@ This is **not production ad tech**. Most five-screen flows remain browser simula
 
 ## Run the web lab
 
+Public commercial entry: `https://warin.me/pages/content-decision-lab/portal.html`.
+Advertisers use `advertiser.html`, system owners `owner.html`, station operators `caster.html`, and observers `live-monitor.html`. Research simulations remain under `index.html` and have no wallet effect.
+
+Owner-granted credits fund real persistent campaign budgets: purchases move available credit into escrow, completed playback consumes escrow, and closing releases unused credit. Grants are not cash receipts. External top-ups remain future work. See `docs/WALLET.md`.
+
 1. Copy `.env.example` to `.env` and replace the database root password.
 2. Run `docker compose up --build`.
 3. Open `http://127.0.0.1:8090/index.html` (or the configured `WEB_PORT`).

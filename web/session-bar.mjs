@@ -1,7 +1,10 @@
 import './page-report.mjs';
 import {getSession} from './session-client.mjs';
+const commercialPages=new Set(['portal.html','login.html','advertiser.html','owner.html','caster.html','live-monitor.html','single-screen.html']);
+if(!commercialPages.has(location.pathname.split('/').pop())){
 const box=document.createElement('aside');box.className='selected-info';document.querySelector('main')?.prepend(box);
 const pilot=document.createElement('a');pilot.href='single-screen.html';pilot.textContent='วงจรครบหนึ่งจอ';box.append(pilot,' · ');
 const login=document.createElement('a');login.href='login.html';login.textContent='Login / บัญชีทดสอบ';box.append(login,' · ');const central=document.createElement('a');central.href='backend-console.html';central.textContent='ข้อมูลกลาง MariaDB';box.append(central);
 getSession().then(d=>{box.append(document.createElement('br'),d.user?'บัญชี: '+d.user.username+' / '+d.user.role:'ยังไม่ Login · หน้าจำลองยังทดลองได้ แต่ API ข้อมูลกลางต้อง Login');}).catch(()=>box.append(' · บริการบัญชีไม่พร้อม'));
 if(['localhost','127.0.0.1'].includes(location.hostname)&&location.pathname.endsWith('/index.html')){const details=document.createElement('details');details.open=true;const title=document.createElement('summary');title.textContent='บัญชีทดสอบทุกบทบาท — เอาออกก่อน production';details.append(title);for(const role of ['customer','operator','reviewer','owner']){const p=document.createElement('p');p.textContent=role+'.demo / LabTest!2026-'+role;details.append(p);}box.append(details);}
+}

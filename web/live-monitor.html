@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Monitor · Proximity Targeting Lab</title>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="architecture.css"><link rel="stylesheet" href="ui-shell.css">
+</head><body><main>
+<h1>Live Monitor · ติดตามสถานะจอ</h1>
+<p>Operator / Owner · อ่านอย่างเดียว · อัปเดตทุก 10 วินาทีเมื่อเปิดหน้านี้อยู่</p>
+<p class="selected-info">สถานะรอบเล่นจาก API ไม่ยืนยันว่าอุปกรณ์ออนไลน์ · Camera / Screen heartbeat: Unknown · ไม่มีภาพ webcam หรือ inference สด</p>
+<div class="actions"><a href="login.html?next=live-monitor">เข้าสู่ระบบเพื่อเปิด Live Monitor</a><button id="monitor-refresh" type="button">รีเฟรช</button></div>
+<p id="monitor-status" role="status" aria-live="polite">กำลังตรวจสอบสิทธิ์…</p>
+<p>แสดงสถานีเริ่มต้นไม่เกิน 5 จุดตามทะเบียนจริง · ประวัติรอบเล่นจำกัดตามข้อมูลที่ API ส่งกลับ ไม่ใช่การตรวจจอจริง</p>
+<div id="monitor-stations" class="arch-grid"></div>
+<noscript>ต้องเปิด JavaScript เพื่ออ่านข้อมูลสถานีที่จำกัดสิทธิ์</noscript>
+</main><script type="module" src="live-monitor.mjs"></script></body></html>

@@ -14,8 +14,10 @@ assert.equal((await customer('logout',{}, {Origin:'https://evil.invalid'})).stat
 const operator=await client('operator');assert.equal((await operator('stations')).status,200);assert.equal((await operator('system-health')).status,200);assert.equal((await operator('owner-summary')).status,403);
 const reviewer=await client('reviewer');assert.equal((await reviewer('station',{id:1,name:'denied',active:true})).status,403);
 const owner=await client('owner');assert.equal((await owner('owner-summary')).status,200);
+const customerId=(await customer('session')).data.user.id;
+assert.equal((await owner('wallet-grant',{user_id:Number(customerId),amount_minor:2400,key:crypto.randomUUID(),reason:'HTTP test grant'})).status,200);
 const media=Buffer.from('000000186674797069736f6d0000020069736f6d69736f32','hex').toString('base64');
-const bought=await customer('cycle-buy',{title:'HTTP acceptance '+Date.now(),target:'any',bid:1200,budget:2400,media});assert.equal(bought.status,200,JSON.stringify(bought.data));
+const bought=await customer('cycle-buy',{key:crypto.randomUUID(),title:'HTTP acceptance '+Date.now(),target:'any',bid:1200,budget:2400,media});assert.equal(bought.status,200,JSON.stringify(bought.data));
 const campaigns=(await operator('cycle-list')).data.campaigns;const campaign=campaigns.find(c=>Number(c.id)===bought.data.id);assert.ok(campaign);
 const sessions=await Promise.all(Array.from({length:5},()=>client('operator')));
 const bids=await Promise.all(sessions.map((call,i)=>call('cycle-auction',{key:crypto.randomUUID(),station_id:i+1,target:'adult',ready:{[campaign.id]:campaign.sha}})));

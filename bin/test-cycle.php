@@ -24,13 +24,14 @@ $db->exec('CREATE TABLE stations(id INT AUTO_INCREMENT PRIMARY KEY,name VARCHAR(
 $db->exec("INSERT INTO stations VALUES(1,'Existing station',1)");
 $db->exec('CREATE TABLE audit_events(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT,action VARCHAR(80),entity_id INT)');
 migrate();
+$walletMigration=require __DIR__.'/../db/migrations/004_wallet.php';$walletMigration($db);
 check((int)$db->query('SELECT COUNT(*) FROM stations')->fetchColumn()===5,'five stations seeded');
 check($db->query('SELECT name FROM stations WHERE id=1')->fetchColumn()==='Existing station','existing station preserved');
 $db->exec("ALTER TABLE stations ADD code VARCHAR(40) NULL");$db->exec("UPDATE stations SET code=CONCAT('ST-',LPAD(id,2,'0'))");$db->exec('ALTER TABLE stations MODIFY code VARCHAR(40) NOT NULL, ADD UNIQUE(code)');
 $db->exec('DELETE FROM stations WHERE id=5');migrate();migrate();
 check($db->query('SELECT code FROM stations WHERE id=5')->fetchColumn()==='ST-05','migration repeats with central station codes');
 $sha=str_repeat('a',64);
-$db->prepare("INSERT INTO cycle_campaigns(user_id,title,target,bid,budget,sha) VALUES(1,'Shared','any',1200,6000,?)")->execute([$sha]);
+$db->prepare("INSERT INTO cycle_campaigns(user_id,title,target,bid,budget,sha,funded,escrow_minor) VALUES(1,'Shared','any',1200,6000,?,1,6000)")->execute([$sha]);
 $payload=['target'=>'adult','ready'=>[1=>$sha]];$jobs=[];
 for($i=1;$i<=5;$i++)$jobs[]=launch('cycle-auction',$payload+['station_id'=>$i,'key'=>sprintf('five-station-key-%02d',$i)]);
 $ids=[];foreach($jobs as $i=>$job){$r=collect($job);check($r['status']===200 && $r['data']['id']!==null,'parallel station '.($i+1).' queued');$ids[$i+1]=$r['data']['id'];}
@@ -57,7 +58,7 @@ check(callCycle('cycle-auction',$payload+['station_id'=>2,'key'=>'refunded-budge
 check((int)$db->query('SELECT COUNT(*) FROM cycle_ledger')->fetchColumn()===2,'only playback charge and refund; no engagement charges');
 $db->exec('UPDATE cycle_runs SET request_payload_sha256=NULL WHERE id='.$ids[1]);
 check(callCycle('cycle-auction',$payload+['key'=>'five-station-key-01'])['status']===409,'unverifiable legacy payload cannot reuse key');
-$db->exec("UPDATE cycle_runs SET state='failed' WHERE state IN ('queued','playing')");$db->exec('UPDATE cycle_campaigns SET budget=2400 WHERE id=1');
+$db->exec("UPDATE cycle_runs SET state='failed' WHERE state IN ('queued','playing')");$db->exec('UPDATE cycle_campaigns SET budget=2400,escrow_minor=2400 WHERE id=1');
 $jobs=[];for($i=1;$i<=5;$i++)$jobs[]=launch('cycle-auction',$payload+['station_id'=>$i,'key'=>sprintf('contended-budget-%02d',$i)]);
 $allocated=0;foreach($jobs as $job){$r=collect($job);check($r['status']===200,'contended allocation returns cleanly');if($r['data']['id']!==null)$allocated++;}
 check($allocated===2,'five concurrent stations cannot reserve more than two affordable bids');

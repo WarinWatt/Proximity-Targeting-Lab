@@ -1,1 +1,21 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Login · Proximity Lab</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ui-shell.css"></head><body><main><h1>Proximity Lab · Login</h1><p>บัญชีกลางสำหรับ Lab บนเครื่องนี้ · ข้อมูลสถานีบันทึกใน MariaDB</p><section><form id="login"><label>Username <input id="username" autocomplete="username" required></label><label>Password <input id="password" type="password" autocomplete="current-password" required></label><button>Login</button></form><p id="status" role="status"></p><button id="logout">Logout</button><a href="index.html">หน้าแรก</a> · <a href="backend-console.html">จัดการข้อมูลกลาง</a></section><section id="demo" hidden><h2>บัญชีทดสอบ — ลบก่อนเปิดใช้งานจริง</h2><div id="accounts"></div><p>ข้อมูลตัวอย่างเท่านั้น ห้ามใช้รหัสเหล่านี้กับบัญชีจริง</p></section><script type="module" src="login.mjs"></script></main><script type="module" src="ui-shell.mjs"></script><script type="module" src="session-bar.mjs"></script></body></html>
+<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>เข้าสู่ระบบ · Proximity Ads</title>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ui-shell.css">
+</head><body><main class="login-main">
+<a class="portal-back" href="portal.html">← เลือกพื้นที่ใช้งาน</a>
+<section class="login-card" aria-labelledby="login-title">
+<p class="portal-eyebrow">PROXIMITY ADS</p><h1 id="login-title">ยินดีต้อนรับ</h1>
+<p id="login-context">เข้าสู่ระบบเพื่อจัดการพื้นที่ของคุณ</p>
+<form id="login">
+<label for="username">ชื่อผู้ใช้</label><input id="username" name="username" autocomplete="username" required>
+<label for="password">รหัสผ่าน</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+<button class="primary" id="sign-in" type="submit">เข้าสู่ระบบ</button>
+</form>
+<p id="status" role="status" aria-live="polite"></p>
+<div class="actions"><a id="continue" class="portal-cta" hidden>ไปยังพื้นที่ของฉัน</a><button id="logout" type="button" hidden>ออกจากระบบ</button></div>
+<p class="login-help">หากยังไม่มีบัญชี กรุณาติดต่อผู้ดูแลบริการเพื่อขอสิทธิ์ใช้งาน</p>
+</section>
+<section id="demo" hidden><h2>บัญชีทดสอบสำหรับเครื่องนี้</h2><div id="accounts"></div></section>
+</main><script type="module" src="login.mjs"></script><script type="module" src="ui-shell.mjs"></script><script type="module" src="session-bar.mjs"></script></body></html>

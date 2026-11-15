@@ -1,7 +1,9 @@
 export const entities={
+ wallet_accounts:['PK/FK user_id','available_minor BIGINT >= 0; available grant credits, THB minor units'],
+ wallet_ledger:['PK id','FK user_id, actor_id, campaign_id (nullable), run_id (nullable)','kind, amount_minor, available_after_minor, request_key UNIQUE, payload_hash, reason, created_at; append-only grant/fund/close/refund'],
  cycle_attention:['PK id','FK run_id','observation_key UNIQUE, clip_ms, looking_ms, stopped_ms, confidence, source, metric_version, payload_hash, billable=false; append-only manual telemetry'],
- cycle_campaigns:['PK id','FK user_id','title, target, bid, budget, spent, sha, mime, media (pilot <=8MB); LIVE'],
- cycle_runs:['PK id','FK station_id, campaign_id','request_key (unique), request_payload_sha256 (nullable for legacy requests), target, price, state, trace_json, started_at, completed_at, review, reason; queued/playing price reserves campaign budget; LIVE'],
+ cycle_campaigns:['PK id','FK user_id','title, target, bid, budget, spent, sha, mime, media (<=8MB), funded, closed, escrow_minor, purchase_key UNIQUE, purchase_payload_hash; funded credit purchases'],
+ cycle_runs:['PK id','FK station_id, campaign_id','request_key (unique), request_payload_sha256 (nullable for legacy requests), escrow_funded (legacy=false), target, price, state, trace_json, started_at, completed_at, review, reason; queued/playing price reserves campaign escrow'],
  cycle_ledger:['PK id','FK run_id','kind, amount, created_at; UNIQUE(run_id,kind); LIVE'],
  auth_users:['PK id','username (unique), password_hash, role; LIVE MariaDB users'],
  central_stations:['PK id','name, active; LIVE MariaDB stations (five integrated stations; cycle station_id defaults to 1)'],
@@ -106,6 +108,11 @@ Object.assign(entities,{
 entities.campaigns.push('FK customer_id');
 entities.playback_plans.push('FK assignment_id, price_id (nullable)');
 export const relations=[
+ {from:'wallet_accounts',field:'user_id',to:'auth_users',cardinality:'1 → 1'},
+ {from:'wallet_ledger',field:'user_id',to:'wallet_accounts',cardinality:'N → 1'},
+ {from:'wallet_ledger',field:'actor_id',to:'auth_users',cardinality:'N → 1'},
+ {from:'wallet_ledger',field:'campaign_id',to:'cycle_campaigns',cardinality:'N → 1'},
+ {from:'wallet_ledger',field:'run_id',to:'cycle_runs',cardinality:'N → 1'},
  {from:'cycle_attention',field:'run_id',to:'cycle_runs',cardinality:'N → 1'},
  {from:'cycle_campaigns',field:'user_id',to:'auth_users',cardinality:'N → 1'},
  {from:'cycle_runs',field:'station_id',to:'central_stations',cardinality:'N → 1'},

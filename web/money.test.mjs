@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {parseBaht} from './money.mjs';
+test('money inputs preserve exact satang and reject silent rounding',()=>{assert.equal(parseBaht('12.01'),1201);assert.equal(parseBaht('0.1'),10);assert.equal(parseBaht('1000000'),100000000);for(const value of ['1.001','-1','1e3','NaN','1,000','1000000.01','Infinity',''])assert.throws(()=>parseBaht(value));});
