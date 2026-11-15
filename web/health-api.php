@@ -4,14 +4,29 @@ if (!isset($db, $user, $action, $method) || !$user) {
     http_response_code(404);
     exit;
 }
-if (!in_array($action, ['owner-summary', 'system-health'], true)) return;
-$roles = $action === 'owner-summary' ? ['owner'] : ['operator', 'owner'];
+if (!in_array($action, ['owner-summary', 'system-health','owner-stations','owner-station'], true)) return;
+$roles = $action !== 'system-health' ? ['owner'] : ['operator', 'owner'];
 if (!in_array($user['role'] ?? '', $roles, true)) reply(403, ['error' => 'Role denied']);
 if ($method !== 'GET') {
     header('Allow: GET');
     reply(405, ['error' => 'Method not allowed']);
 }
 try {
+    if($action==='owner-stations'){
+        $rows=$db->query("SELECT s.id,s.name,s.active,COALESCE(r.runs,0) runs,COALESCE(r.completed,0) completed,COALESCE(r.failed,0) failed,COALESCE(r.pending,0) pending,COALESCE(r.held,0) held,COALESCE(l.charge,0) charge,COALESCE(l.refund,0) refund,COALESCE(l.net,0) net FROM stations s LEFT JOIN (SELECT station_id,COUNT(*) runs,SUM(state='completed') completed,SUM(state='failed') failed,SUM(state='completed' AND review='pending') pending,SUM(IF(state IN ('queued','playing'),price,0)) held FROM cycle_runs GROUP BY station_id) r ON r.station_id=s.id LEFT JOIN (SELECT r.station_id,SUM(IF(l.kind='charge',l.amount,0)) charge,-SUM(IF(l.kind='refund',l.amount,0)) refund,SUM(l.amount) net FROM cycle_ledger l JOIN cycle_runs r ON r.id=l.run_id GROUP BY r.station_id) l ON l.station_id=s.id ORDER BY s.id")->fetchAll(PDO::FETCH_ASSOC);
+        reply(200,['stations'=>$rows]);
+    }
+    if($action==='owner-station'){
+        $id=filter_var($_GET['id']??null,FILTER_VALIDATE_INT);if(!$id||$id<1)reply(422,['error'=>'Invalid station']);
+        $q=$db->prepare('SELECT id,name,active FROM stations WHERE id=?');$q->execute([$id]);$station=$q->fetch(PDO::FETCH_ASSOC);if(!$station)reply(404,['error'=>'Station not found']);
+        $before=max(1,(int)($_GET['before']??PHP_INT_MAX));
+        $q=$db->prepare('SELECT r.*,c.title,c.sha,c.mime,c.user_id,u.username owner_name FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id JOIN users u ON u.id=c.user_id WHERE r.station_id=? AND r.id<? ORDER BY r.id DESC LIMIT 51');$q->execute([$id,$before]);$runs=$q->fetchAll(PDO::FETCH_ASSOC);$more=count($runs)>50;if($more)array_pop($runs);
+        foreach($runs as &$run){
+            $q=$db->prepare('SELECT id,kind,amount,created_at FROM cycle_ledger WHERE run_id=? ORDER BY id');$q->execute([$run['id']]);$run['ledger']=$q->fetchAll(PDO::FETCH_ASSOC);
+            $q=$db->prepare('SELECT clip_ms,looking_ms,stopped_ms,confidence,source,metric_version,billable,created_at FROM cycle_attention WHERE run_id=? ORDER BY id DESC LIMIT 20');$q->execute([$run['id']]);$run['attention']=$q->fetchAll(PDO::FETCH_ASSOC);
+        }unset($run);
+        reply(200,['station'=>$station,'runs'=>$runs,'next_before'=>$more?(int)end($runs)['id']:null,'device_health'=>'unknown']);
+    }
     if ($action === 'owner-summary') {
         // Separate scalar aggregates avoid multiplying ledger amounts by run joins.
         // Only queued/playing runs hold budget; completed runs are already charged.

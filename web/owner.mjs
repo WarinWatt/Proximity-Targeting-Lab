@@ -1,3 +1,4 @@
+import {mountDrilldown} from './owner-drilldown.mjs';
 const $ = id => document.getElementById(id);
 const money = new Intl.NumberFormat('th-TH', {style: 'currency', currency: 'THB'});
 const count = new Intl.NumberFormat('th-TH');
@@ -43,7 +44,7 @@ async function refresh() {
     $('status').textContent = `${user.username} · ${user.role} · รีเฟรชเพื่ออ่านข้อมูลล่าสุด`;
     $('health').hidden = false;
     const jobs = [health()];
-    if (user.role === 'owner') { $('revenue').hidden = false; jobs.push(revenue()); }
+    if (user.role === 'owner') { $('revenue').hidden = false; jobs.push(revenue(),mountDrilldown()); }
     await Promise.all(jobs);
   } catch (error) { clear(); $('status').textContent = error.message; }
   finally { $('refresh').disabled = false; }
