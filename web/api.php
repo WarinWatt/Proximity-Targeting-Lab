@@ -25,18 +25,10 @@ if($method==='POST'){
  $expectedOrigin=($local?'http':'https').'://'.($_SERVER['HTTP_HOST']??'');if(($_SERVER['HTTP_ORIGIN']??'')!==$expectedOrigin)reply(403,['error'=>'Origin denied']);
  if(!hash_equals($_SESSION['csrf'],$_SERVER['HTTP_X_CSRF_TOKEN']??''))reply(403,['error'=>'CSRF denied']);
 }
-if($action==='session')reply(200,['user'=>$_SESSION['user']??null,'csrf'=>$_SESSION['csrf']]);
-if($action==='login'&&$method==='POST'){
- if(!$local&&str_ends_with(strtolower((string)($body['username']??'')),'.demo'))reply(403,['error'=>'Demo accounts are disabled on public hosts']);
- $ip=$_SERVER['REMOTE_ADDR']??'unknown';$q=$db->prepare('SELECT COUNT(*) FROM auth_attempts WHERE ip=? AND attempted_at > DATE_SUB(NOW(), INTERVAL 15 MINUTE)');$q->execute([$ip]);if((int)$q->fetchColumn()>=30)reply(429,['error'=>'Too many attempts; retry after 15 minutes']);
- $db->prepare('INSERT INTO auth_attempts(ip) VALUES (?)')->execute([$ip]);
- $q=$db->prepare('SELECT id,username,password_hash,role FROM users WHERE username=?');$q->execute([(string)($body['username']??'')]);$u=$q->fetch(PDO::FETCH_ASSOC);
- if(!$u||!password_verify((string)($body['password']??''),$u['password_hash']))reply(401,['error'=>'Username or password incorrect']);
- if(password_needs_rehash($u['password_hash'],PASSWORD_DEFAULT))$db->prepare('UPDATE users SET password_hash=? WHERE id=?')->execute([password_hash((string)$body['password'],PASSWORD_DEFAULT),$u['id']]);
- session_regenerate_id(true);unset($u['password_hash']);$_SESSION['user']=$u;$_SESSION['csrf']=bin2hex(random_bytes(24));reply(200,['user'=>$u,'csrf'=>$_SESSION['csrf']]);
-}
-if($action==='logout'&&$method==='POST'){$_SESSION=[];session_destroy();reply(200,['ok'=>true]);}
-$user=$_SESSION['user']??null;if(!$user)reply(401,['error'=>'Login required']);
+require_once __DIR__.'/auth-lib.php';
+try{$user=authRefresh($db);}catch(Throwable $e){reply(503,['error'=>'Account verification unavailable']);}
+require __DIR__.'/auth-api.php';
+if(!$user)reply(401,['error'=>'Login required']);
 session_write_close(); // Allow concurrent station requests; DB transactions enforce shared budgets.
 if($action==='wallet'||str_starts_with($action,'wallet-'))require __DIR__.'/wallet-api.php';
 if(in_array($action,['owner-summary','system-health','owner-stations','owner-station'],true))require __DIR__.'/health-api.php';
@@ -44,10 +36,11 @@ if($action==='cycle-attention')require __DIR__.'/attention-api.php';
 if(str_starts_with($action,'cycle-'))require __DIR__.'/cycle-api.php';
 if($action==='stations'&&$method==='GET')reply(200,['stations'=>$db->query('SELECT * FROM stations ORDER BY id')->fetchAll(PDO::FETCH_ASSOC)]);
 if($action==='station'&&$method==='POST'){
+ if($user['is_demo'])reply(403,['error'=>'Demo accounts cannot modify shared stations']);
  if(!in_array($user['role'],['operator','owner'],true))reply(403,['error'=>'Operator or owner required']);
  $name=trim((string)($body['name']??''));if($name===''||mb_strlen($name)>80)reply(422,['error'=>'Name required (max 80)']);
  $id=(int)($body['id']??0);$active=!empty($body['active'])?1:0;
  $db->beginTransaction();try{if($id){$q=$db->prepare('SELECT id FROM stations WHERE id=? FOR UPDATE');$q->execute([$id]);if(!$q->fetchColumn()){ $db->rollBack();reply(404,['error'=>'Station not found']);}$db->prepare('UPDATE stations SET name=?,active=? WHERE id=?')->execute([$name,$active,$id]);}else{$db->prepare('INSERT INTO stations(name,active) VALUES (?,?)')->execute([$name,1]);$id=(int)$db->lastInsertId();}$db->prepare('INSERT INTO audit_events(user_id,action,entity_id) VALUES (?,?,?)')->execute([$user['id'],'station.save',$id]);$db->commit();}catch(Throwable $e){$db->rollBack();reply(409,['error'=>'Could not save station']);}reply(200,['id'=>$id]);
 }
-if($action==='audit'&&$method==='GET'){if(!in_array($user['role'],['operator','reviewer','owner'],true))reply(403,['error'=>'Role denied']);reply(200,['events'=>$db->query('SELECT id,user_id,action,entity_id,created_at FROM audit_events ORDER BY id DESC LIMIT 100')->fetchAll(PDO::FETCH_ASSOC)]);}
+if($action==='audit'&&$method==='GET'){if(!in_array($user['role'],['operator','reviewer','owner'],true))reply(403,['error'=>'Role denied']);reply(200,['events'=>$db->query('SELECT a.id,a.user_id,a.action,a.entity_id,a.created_at FROM audit_events a JOIN users u ON u.id=a.user_id'.($user['is_demo']?' WHERE u.is_demo=1':'').' ORDER BY a.id DESC LIMIT 100')->fetchAll(PDO::FETCH_ASSOC)]);}
 reply(404,['error'=>'Unknown endpoint']);

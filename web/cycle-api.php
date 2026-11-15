@@ -1,6 +1,7 @@
 <?php
 // Included only after session, CSRF and user checks in api.php.
 require_once __DIR__.'/wallet-lib.php';
+$cycleScope=(int)!empty($user['is_demo']);
 function roleCycle(array $roles):void{global $user;if(!in_array($user['role'],$roles,true))reply(403,['error'=>'Role denied']);}
 function cycleInt($value,int $min,int $max):int{if(filter_var($value,FILTER_VALIDATE_INT)===false||$value<$min||$value>$max)reply(422,['error'=>'Invalid integer']);return (int)$value;}
 if($action==='cycle-advertiser'&&$method==='GET'){
@@ -13,12 +14,16 @@ if($action==='cycle-advertiser'&&$method==='GET'){
  reply(200,['campaigns'=>$campaigns,'stations'=>$stations,'totals'=>$totals,'runs'=>$runs,'attention'=>$q->fetchAll(PDO::FETCH_ASSOC)]);
 }
 if($action==='cycle-list'&&$method==='GET'){
- $customer=$user['role']==='customer';$q=$db->prepare('SELECT id,user_id,title,target,bid,budget,spent,sha,mime,funded,closed,escrow_minor FROM cycle_campaigns'.($customer?' WHERE user_id=?':'').' ORDER BY id');$q->execute($customer?[$user['id']]:[]);$c=$q->fetchAll(PDO::FETCH_ASSOC);foreach($c as &$row){$row['funded']=(int)$row['funded'];$row['closed']=(int)$row['closed'];}unset($row);
- $q=$db->prepare('SELECT r.* FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id'.($customer?' WHERE c.user_id=?':'').' ORDER BY r.id DESC LIMIT 100');$q->execute($customer?[$user['id']]:[]);$runs=$q->fetchAll(PDO::FETCH_ASSOC);
- $q=$db->prepare('SELECT l.* FROM cycle_ledger l JOIN cycle_runs r ON r.id=l.run_id JOIN cycle_campaigns c ON c.id=r.campaign_id'.($customer?' WHERE c.user_id=?':'').' ORDER BY l.id DESC LIMIT 100');$q->execute($customer?[$user['id']]:[]);reply(200,['campaigns'=>$c,'runs'=>$runs,'ledger'=>$q->fetchAll(PDO::FETCH_ASSOC)]);
+ $customer=$user['role']==='customer';$scope=' JOIN users u ON u.id=c.user_id WHERE u.is_demo=?'.($customer?' AND c.user_id=?':'');$params=$customer?[$cycleScope,$user['id']]:[$cycleScope];
+ $q=$db->prepare('SELECT c.id,c.user_id,c.title,c.target,c.bid,c.budget,c.spent,c.sha,c.mime,c.funded,c.closed,c.escrow_minor FROM cycle_campaigns c'.$scope.' ORDER BY c.id');$q->execute($params);$c=$q->fetchAll(PDO::FETCH_ASSOC);foreach($c as &$row){$row['funded']=(int)$row['funded'];$row['closed']=(int)$row['closed'];}unset($row);
+ $q=$db->prepare('SELECT r.* FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id'.$scope.' ORDER BY r.id DESC LIMIT 100');$q->execute($params);$runs=$q->fetchAll(PDO::FETCH_ASSOC);
+ // Older stored traces can contain candidates from before scope isolation.
+ $visibleCampaigns=array_fill_keys(array_column($c,'id'),true);
+ foreach($runs as &$run){$trace=json_decode($run['trace_json']??'',true);$run['trace_json']=json_encode(is_array($trace)?array_values(array_filter($trace,fn($row)=>is_array($row)&&isset($visibleCampaigns[(int)($row['campaign']??0)]))):[]);}unset($run);
+ $q=$db->prepare('SELECT l.* FROM cycle_ledger l JOIN cycle_runs r ON r.id=l.run_id JOIN cycle_campaigns c ON c.id=r.campaign_id'.$scope.' ORDER BY l.id DESC LIMIT 100');$q->execute($params);reply(200,['campaigns'=>$c,'runs'=>$runs,'ledger'=>$q->fetchAll(PDO::FETCH_ASSOC)]);
 }
 if($action==='cycle-media'&&$method==='GET'){
- $q=$db->prepare('SELECT user_id,media,mime FROM cycle_campaigns WHERE id=?');$q->execute([(int)($_GET['id']??0)]);$c=$q->fetch(PDO::FETCH_ASSOC);if(!$c)reply(404,['error'=>'Not found']);if($user['role']==='customer'&&$c['user_id']!=$user['id'])reply(403,['error'=>'Denied']);header('Content-Type: '.$c['mime']);header('X-Content-Type-Options: nosniff');echo $c['media'];exit;
+ $q=$db->prepare('SELECT c.user_id,c.media,c.mime FROM cycle_campaigns c JOIN users u ON u.id=c.user_id WHERE c.id=? AND u.is_demo=?');$q->execute([(int)($_GET['id']??0),$cycleScope]);$c=$q->fetch(PDO::FETCH_ASSOC);if(!$c)reply(404,['error'=>'Not found']);if($user['role']==='customer'&&$c['user_id']!=$user['id'])reply(403,['error'=>'Denied']);header('Content-Type: '.$c['mime']);header('X-Content-Type-Options: nosniff');echo $c['media'];exit;
 }
 if($method!=='POST')reply(404,['error'=>'Unknown cycle endpoint']);
 if($action==='cycle-buy'){
@@ -35,8 +40,8 @@ if($action==='cycle-buy'){
 if($action==='cycle-close'){
  roleCycle(['customer','owner']);try{
   $actor=(int)$user['id'];$id=walletInt($body['id']??$body['campaign_id']??null,1,PHP_INT_MAX);$key=walletKey($body,'close',$actor);$hash=walletHash(['close',$id]);walletBegin($db);
-  $q=$db->prepare('SELECT user_id FROM cycle_campaigns WHERE id=?');$q->execute([$id]);$owner=$q->fetchColumn();if($owner===false)throw new RuntimeException('Campaign missing');$owner=(int)$owner;if($user['role']!=='owner'&&$owner!==$actor)throw new RuntimeException('Own campaign required');walletLock($db,$owner);
-  $q=$db->prepare('SELECT * FROM cycle_campaigns WHERE id=? FOR UPDATE');$q->execute([$id]);$c=$q->fetch(PDO::FETCH_ASSOC);if(!$c||(int)$c['user_id']!==$owner)throw new RuntimeException('Campaign changed');
+  $q=$db->prepare('SELECT c.user_id FROM cycle_campaigns c JOIN users u ON u.id=c.user_id WHERE c.id=? AND u.is_demo=?');$q->execute([$id,$cycleScope]);$owner=$q->fetchColumn();if($owner===false)throw new RuntimeException('Campaign missing');$owner=(int)$owner;if($user['role']!=='owner'&&$owner!==$actor)throw new RuntimeException('Own campaign required');walletLock($db,$owner);
+  $q=$db->prepare('SELECT c.* FROM cycle_campaigns c JOIN users u ON u.id=c.user_id WHERE c.id=? AND u.is_demo=? FOR UPDATE');$q->execute([$id,$cycleScope]);$c=$q->fetch(PDO::FETCH_ASSOC);if(!$c||(int)$c['user_id']!==$owner)throw new RuntimeException('Campaign changed');
   if($result=walletReplay($db,$key,$hash)){$db->commit();reply(200,$result);}
   $q=$db->prepare("SELECT id FROM cycle_runs WHERE campaign_id=? AND state IN ('queued','playing') LIMIT 1 FOR UPDATE");$q->execute([$id]);if($q->fetchColumn())throw new RuntimeException('Finish or cancel active runs before closing');
   $release=(!$c['closed']&&$c['funded'])?(int)$c['escrow_minor']:0;
@@ -57,24 +62,24 @@ $db->beginTransaction();try{
   $ready=$body['ready']??[];if(!is_array($ready))throw new RuntimeException('Invalid cache readiness');
   foreach($ready as $campaign=>$sha){if(!ctype_digit((string)$campaign)||!is_string($sha)||!preg_match('/^[a-f0-9]{64}$/D',$sha))throw new RuntimeException('Invalid cache readiness');}
   ksort($ready,SORT_NUMERIC);$payloadHash=hash('sha256',json_encode([$stationId,$target,$ready],JSON_THROW_ON_ERROR));
-  $q=$db->prepare('SELECT id,station_id,request_payload_sha256 FROM cycle_runs WHERE request_key=?');$q->execute([$key]);if($existing=$q->fetch(PDO::FETCH_ASSOC)){
+  $q=$db->prepare('SELECT r.id,r.station_id,r.request_payload_sha256 FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id JOIN users u ON u.id=c.user_id WHERE r.request_key=? AND u.is_demo=?');$q->execute([$key,$cycleScope]);if($existing=$q->fetch(PDO::FETCH_ASSOC)){
    if((int)$existing['station_id']!==$stationId||!is_string($existing['request_payload_sha256'])||!hash_equals($existing['request_payload_sha256'],$payloadHash))throw new RuntimeException('Request key conflicts with station or payload');
    $db->commit();reply(200,['id'=>(int)$existing['id']]);
   }
   if(!$station['active'])throw new RuntimeException('Station archived');
-  $q=$db->prepare("SELECT id FROM cycle_runs WHERE station_id=? AND state IN ('queued','playing') LIMIT 1");$q->execute([$stationId]);if($q->fetchColumn())throw new RuntimeException('Finish or cancel the current slot first');
+  $q=$db->prepare("SELECT r.id FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id JOIN users u ON u.id=c.user_id WHERE r.station_id=? AND r.state IN ('queued','playing') AND u.is_demo=? LIMIT 1");$q->execute([$stationId,$cycleScope]);if($q->fetchColumn())throw new RuntimeException('Finish or cancel the current slot first');
   // Read IDs first; all campaign insert/fund/close writers lock their wallet.
-  foreach($db->query('SELECT id FROM users ORDER BY id ASC')->fetchAll(PDO::FETCH_COLUMN) as $ownerId)walletLock($db,(int)$ownerId);
-  $campaigns=$db->query('SELECT id,target,bid,budget,spent,sha,funded,closed,escrow_minor FROM cycle_campaigns ORDER BY id ASC FOR UPDATE')->fetchAll(PDO::FETCH_ASSOC);
-  $reserved=[];foreach($db->query("SELECT campaign_id,SUM(price) AS reserved FROM cycle_runs WHERE state IN ('queued','playing') GROUP BY campaign_id")->fetchAll(PDO::FETCH_ASSOC) as $reservation)$reserved[$reservation['campaign_id']]=(int)$reservation['reserved'];
+  $q=$db->prepare('SELECT id FROM users WHERE is_demo=? ORDER BY id ASC');$q->execute([$cycleScope]);foreach($q->fetchAll(PDO::FETCH_COLUMN) as $ownerId)walletLock($db,(int)$ownerId);
+  $q=$db->prepare('SELECT c.id,c.target,c.bid,c.budget,c.spent,c.sha,c.funded,c.closed,c.escrow_minor FROM cycle_campaigns c JOIN users u ON u.id=c.user_id WHERE u.is_demo=? ORDER BY c.id ASC FOR UPDATE');$q->execute([$cycleScope]);$campaigns=$q->fetchAll(PDO::FETCH_ASSOC);
+  $q=$db->prepare("SELECT r.campaign_id,SUM(r.price) AS reserved FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id JOIN users u ON u.id=c.user_id WHERE r.state IN ('queued','playing') AND u.is_demo=? GROUP BY r.campaign_id");$q->execute([$cycleScope]);$reserved=[];foreach($q->fetchAll(PDO::FETCH_ASSOC) as $reservation)$reserved[$reservation['campaign_id']]=(int)$reservation['reserved'];
   usort($campaigns,fn($a,$b)=>((int)$b['bid']<=>(int)$a['bid'])?:((int)$a['id']<=>(int)$b['id']));$trace=[];$winner=null;
   foreach($campaigns as $c){$why=[];if(!$c['funded'])$why[]='campaign not funded';if($c['closed'])$why[]='campaign closed';if($c['target']!=='any'&&$c['target']!==$target)$why[]='target mismatch';if(!isset($ready[$c['id']])||!hash_equals($c['sha'],(string)$ready[$c['id']]))$why[]='cache not ready';if(min((int)$c['budget']-(int)$c['spent'],(int)$c['escrow_minor'])-($reserved[$c['id']]??0)<$c['bid'])$why[]='insufficient budget';$trace[]=['campaign'=>$c['id'],'bid'=>$c['bid'],'reasons'=>$why];if(!$why&&!$winner)$winner=$c;}
   if(!$winner){$db->commit();reply(200,['id'=>null,'trace'=>$trace,'message'=>'No eligible campaign; no charge']);}
   $db->prepare("INSERT INTO cycle_runs(station_id,campaign_id,request_key,request_payload_sha256,target,price,state,trace_json,escrow_funded) VALUES (?,?,?,?,?,?, 'queued',?,1)")->execute([$stationId,$winner['id'],$key,$payloadHash,$target,$winner['bid'],json_encode($trace)]);$id=(int)$db->lastInsertId();$db->commit();reply(200,['id'=>$id,'trace'=>$trace]);
  }
  $id=(int)($body['id']??0);$q=$db->prepare('SELECT campaign_id FROM cycle_runs WHERE id=? AND station_id=?');$q->execute([$id,$stationId]);$campaignId=$q->fetchColumn();if(!$campaignId)throw new RuntimeException('Run missing at station');
- $q=$db->prepare('SELECT user_id FROM cycle_campaigns WHERE id=?');$q->execute([$campaignId]);$ownerId=$q->fetchColumn();if(!$ownerId)throw new RuntimeException('Campaign missing');walletLock($db,(int)$ownerId);
- $q=$db->prepare('SELECT * FROM cycle_campaigns WHERE id=? FOR UPDATE');$q->execute([$campaignId]);$campaign=$q->fetch(PDO::FETCH_ASSOC);if(!$campaign||(int)$campaign['user_id']!==(int)$ownerId)throw new RuntimeException('Campaign changed');
+ $q=$db->prepare('SELECT c.user_id FROM cycle_campaigns c JOIN users u ON u.id=c.user_id WHERE c.id=? AND u.is_demo=?');$q->execute([$campaignId,$cycleScope]);$ownerId=$q->fetchColumn();if(!$ownerId)throw new RuntimeException('Campaign missing');walletLock($db,(int)$ownerId);
+ $q=$db->prepare('SELECT c.* FROM cycle_campaigns c JOIN users u ON u.id=c.user_id WHERE c.id=? AND u.is_demo=? FOR UPDATE');$q->execute([$campaignId,$cycleScope]);$campaign=$q->fetch(PDO::FETCH_ASSOC);if(!$campaign||(int)$campaign['user_id']!==(int)$ownerId)throw new RuntimeException('Campaign changed');
  $q=$db->prepare('SELECT * FROM cycle_runs WHERE id=? AND station_id=? FOR UPDATE');$q->execute([$id,$stationId]);$r=$q->fetch(PDO::FETCH_ASSOC);if(!$r||(int)$r['campaign_id']!==(int)$campaignId)throw new RuntimeException('Run changed');
  if($action==='cycle-start'){
   if(!$station['active'])throw new RuntimeException('Station archived');

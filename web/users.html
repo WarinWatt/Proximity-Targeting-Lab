@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>จัดการผู้ใช้ · Proximity Ads</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ui-shell.css"></head><body>
+<main class="account-main"><div class="heading"><div><h1>จัดการผู้ใช้</h1><p>ดูแลบัญชีและกำหนดพื้นที่ใช้งานให้ทีม</p></div><button id="refresh-users" type="button" disabled>รีเฟรช</button></div>
+<p id="status" role="status" aria-live="polite">กำลังตรวจสอบสิทธิ์…</p>
+<div id="user-management" hidden>
+<section aria-labelledby="users-title"><div class="section-title"><h2 id="users-title">บัญชีผู้ใช้</h2><button id="new-user" type="button">เพิ่มผู้ใช้</button></div><div id="users-list" class="account-user-list"></div></section>
+<section class="login-card" aria-labelledby="editor-title"><h2 id="editor-title">เพิ่มผู้ใช้</h2>
+<form id="user-editor"><fieldset id="user-fields" disabled>
+<input id="user-id" type="hidden">
+<label for="username">ชื่อผู้ใช้</label><input id="username" name="username" autocomplete="off" required>
+<label for="display-name">ชื่อที่แสดง</label><input id="display-name" name="display_name" autocomplete="off" required>
+<label for="email">อีเมล</label><input id="email" name="email" type="email" autocomplete="off" required>
+<label for="password">รหัสผ่าน</label><input id="password" name="password" type="password" autocomplete="new-password"><p id="password-help" class="login-help">กำหนดรหัสผ่านสำหรับบัญชีใหม่</p>
+<fieldset class="account-roles"><legend>พื้นที่ใช้งาน · เลือกได้หลายบทบาท</legend>
+<label><input type="checkbox" name="roles" value="customer"> Ads Owner · เจ้าของโฆษณา</label>
+<label><input type="checkbox" name="roles" value="owner"> System Owner · เจ้าของระบบ</label>
+<label><input type="checkbox" name="roles" value="operator"> Station Operator · ผู้ดูแลสถานี</label>
+<label><input type="checkbox" name="roles" value="reviewer"> Reviewer · ผู้ตรวจสอบ</label>
+</fieldset><label class="account-checkbox"><input id="active" name="active" type="checkbox" checked> เปิดใช้งานบัญชี</label>
+<div class="actions"><button id="save-user" class="primary" type="submit">บันทึกผู้ใช้</button><button id="cancel-edit" type="button">ยกเลิก</button></div>
+</fieldset></form><p id="editor-status" role="status" aria-live="polite"></p></section>
+<section id="demo-management" hidden aria-labelledby="demo-title"><h2 id="demo-title">พื้นที่ทดลองใช้</h2><p>เปิดบัญชีทดลองชั่วคราวสำหรับผู้ที่ต้องการทดลองบริการ</p><p id="demo-state"></p>
+<form id="demo-mode"><fieldset id="demo-fields" disabled><label class="account-checkbox"><input id="demo-enabled" type="checkbox"> เปิดให้ทดลองใช้</label><button id="save-demo" type="submit">บันทึกการทดลองใช้</button></fieldset></form><p id="demo-status" role="status" aria-live="polite"></p>
+</section></div></main><script type="module" src="users.mjs"></script><script type="module" src="ui-shell.mjs"></script><script type="module" src="session-bar.mjs"></script></body></html>

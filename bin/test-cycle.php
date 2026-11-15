@@ -19,7 +19,7 @@ function collect(array $job): array {
 }
 function callCycle(string $action,array $body): array {return collect(launch($action,$body));}
 function migrate():void { $p=proc_open([PHP_BINARY,__DIR__.'/../web/cycle-migrate.php'],[], $pipes);if(proc_close($p)!==0)throw new RuntimeException('Migration failed'); }
-$db->exec('CREATE TABLE users(id INT PRIMARY KEY)');$db->exec('INSERT INTO users VALUES(1)');
+$db->exec('CREATE TABLE users(id INT PRIMARY KEY,is_demo BOOLEAN NOT NULL DEFAULT 0)');$db->exec('INSERT INTO users(id) VALUES(1)');
 $db->exec('CREATE TABLE stations(id INT AUTO_INCREMENT PRIMARY KEY,name VARCHAR(80) NOT NULL,active BOOLEAN NOT NULL DEFAULT 1)');
 $db->exec("INSERT INTO stations VALUES(1,'Existing station',1)");
 $db->exec('CREATE TABLE audit_events(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT,action VARCHAR(80),entity_id INT)');

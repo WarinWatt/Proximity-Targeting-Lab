@@ -1,6 +1,6 @@
 import './page-report.mjs';
 import {getSession} from './session-client.mjs';
-const commercialPages=new Set(['portal.html','login.html','advertiser.html','owner.html','caster.html','live-monitor.html','single-screen.html']);
+const commercialPages=new Set(['portal.html','login.html','register.html','profile.html','users.html','advertiser.html','owner.html','caster.html','live-monitor.html','single-screen.html']);
 if(!commercialPages.has(location.pathname.split('/').pop())){
 const box=document.createElement('aside');box.className='selected-info';document.querySelector('main')?.prepend(box);
 const pilot=document.createElement('a');pilot.href='single-screen.html';pilot.textContent='วงจรครบหนึ่งจอ';box.append(pilot,' · ');

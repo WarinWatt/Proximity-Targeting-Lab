@@ -64,7 +64,7 @@ const passed=[];
 async function check(label,fn){await fn();passed.push(label);console.log(`PASS ${label}`);}
 
 // No existing customer, balance, campaign, station or ledger row is changed by setup.
-const identities=JSON.parse(sql(`$out=[];$q=$db->prepare('INSERT INTO users(username,password_hash,role) VALUES (?,?,?)');foreach(['owner','customer','customer2','operator','reviewer'] as $name){$role=$name==='customer2'?'customer':$name;$username='${run}-'.$name;$q->execute([$username,password_hash('${password}',PASSWORD_DEFAULT),$role]);$out[$name]=['id'=>(int)$db->lastInsertId(),'username'=>$username];}echo json_encode($out);`));
+const identities=JSON.parse(sql(`$out=[];$q=$db->prepare('INSERT INTO users(username,password_hash,role) VALUES (?,?,?)');foreach(['owner','customer','customer2','operator','reviewer'] as $name){$role=$name==='customer2'?'customer':$name;$username='${run}-'.$name;$q->execute([$username,password_hash('${password}',PASSWORD_DEFAULT),$role]);$id=(int)$db->lastInsertId();$db->prepare('INSERT INTO user_roles(user_id,role) VALUES (?,?)')->execute([$id,$role]);$out[$name]=['id'=>$id,'username'=>$username];}echo json_encode($out);`));
 console.log(`Disposable wallet fixtures: ${run}`);
 const [owner,a,b,operator,reviewer,anonymous]=await Promise.all([
  client(identities.owner),client(identities.customer),client(identities.customer2),client(identities.operator),client(identities.reviewer),client()

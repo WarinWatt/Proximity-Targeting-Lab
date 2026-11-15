@@ -9,3 +9,6 @@ openpar/*.part
 openpar/PA100k_Checkpoint*.pth*
 *.log
 .DS_Store
+.artifacts/
+TOR_*.docx
+TOR_แยก_7_ฉบับ/

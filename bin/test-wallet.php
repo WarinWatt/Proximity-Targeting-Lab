@@ -18,7 +18,8 @@ function success(array $r,string $label):array {if($r['status']!==200)throw new 
 function snapshot(int $available,int $escrow,string $label,int $user=2):array {$s=success(call('wallet',[],$user,'customer','GET'),$label);ok($s['available_minor']===$available&&$s['escrow_minor']===$escrow,$label.' balances');return $s;}
 function grant(int $owner,int $amount,string $key):array{return call('wallet-grant',['user_id'=>$owner,'amount_minor'=>$amount,'key'=>$key,'reason'=>'Administrative test credit'],1,'owner');}
 function auction(int $campaign,int $station,string $key):array {global $db;$q=$db->prepare('SELECT sha FROM cycle_campaigns WHERE id=?');$q->execute([$campaign]);return call('cycle-auction',['station_id'=>$station,'target'=>'adult','ready'=>[$campaign=>$q->fetchColumn()],'key'=>$key],4,'operator');}
-$db->exec('CREATE TABLE users(id INT PRIMARY KEY,username VARCHAR(80),role VARCHAR(20))');$db->exec("INSERT INTO users VALUES(1,'owner','owner'),(2,'customer','customer'),(3,'other','customer'),(4,'operator','operator'),(5,'reviewer','reviewer')");
+$db->exec('CREATE TABLE users(id INT PRIMARY KEY,username VARCHAR(80),role VARCHAR(20),is_demo BOOLEAN NOT NULL DEFAULT 0)');$db->exec("INSERT INTO users(id,username,role) VALUES(1,'owner','owner'),(2,'customer','customer'),(3,'other','customer'),(4,'operator','operator'),(5,'reviewer','reviewer')");
+$db->exec('CREATE TABLE user_roles(user_id INT,role VARCHAR(20),PRIMARY KEY(user_id,role))');$db->exec('INSERT INTO user_roles SELECT id,role FROM users');
 $db->exec('CREATE TABLE stations(id INT AUTO_INCREMENT PRIMARY KEY,name VARCHAR(80),active BOOLEAN NOT NULL DEFAULT 1)');$db->exec('CREATE TABLE audit_events(id INT AUTO_INCREMENT PRIMARY KEY,user_id INT,action VARCHAR(80),entity_id INT)');
 $p=proc_open([PHP_BINARY,__DIR__.'/../web/cycle-migrate.php'],[],$pipes);if(proc_close($p)!==0)throw new RuntimeException('Cycle migration failed');
 $migrate=require __DIR__.'/../db/migrations/004_wallet.php';$migrate($db);$migrate($db);
@@ -32,7 +33,7 @@ ok(grant(2,6001,'initial-wallet-grant')['status']===409,'amount conflict');ok(gr
 $directory=success(call('wallet-customers',[],1,'owner','GET'),'owner directory');ok(count($directory['customers'])===3&&array_key_exists('escrow_minor',$directory['customers'][0]),'eligible directory has escrow');
 ok(call('wallet-customers',[],2,'customer','GET')['status']===403,'directory protected');
 // Accounts created after migration must also serialize on first use.
-$db->exec("INSERT INTO users VALUES(10,'late','customer')");$jobs=[];
+$db->exec("INSERT INTO users(id,username,role) VALUES(10,'late','customer')");$db->exec("INSERT INTO user_roles VALUES(10,'customer')");$jobs=[];
 for($i=0;$i<5;$i++)$jobs[]=launch('wallet-grant',['user_id'=>10,'amount_minor'=>1200,'key'=>'late-account-grant-'.$i,'reason'=>'Test'],1,'owner');foreach($jobs as $job)success(collect($job),'first-use concurrent grant');snapshot(6000,0,'first-use balance',10);
 $media=base64_encode(hex2bin('000000186674797069736f6d0000020069736f6d69736f32'));$buy=['title'=>'Funded test','target'=>'any','bid'=>1200,'budget'=>2400,'media'=>$media];
 ok(call('cycle-buy',$buy)['status']===422,'purchase requires key');

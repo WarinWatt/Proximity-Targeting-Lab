@@ -20,6 +20,7 @@ This is **not production ad tech**. Most five-screen flows remain browser simula
 ## Run the web lab
 
 Public commercial entry: `https://warin.me/pages/content-decision-lab/portal.html`.
+Account pages: `register.html` (advertiser signup), `profile.html` (own profile/password), and `users.html` (owner user management). Accounts may have multiple roles with a server-validated active-role switch. The login page temporarily prefills isolated trial accounts while test mode is enabled; real private account passwords are never prefilled. See `docs/ACCOUNTS.md` for handover controls.
 Advertisers use `advertiser.html`, system owners `owner.html`, station operators `caster.html`, and observers `live-monitor.html`. Research simulations remain under `index.html` and have no wallet effect.
 
 Owner-granted credits fund real persistent campaign budgets: purchases move available credit into escrow, completed playback consumes escrow, and closing releases unused credit. Grants are not cash receipts. External top-ups remain future work. See `docs/WALLET.md`.

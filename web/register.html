@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>สร้างบัญชี · Proximity Ads</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="ui-shell.css"></head><body>
+<main class="login-main">
+<a class="portal-back" href="login.html">← เข้าสู่ระบบ</a>
+<section class="login-card" aria-labelledby="register-title">
+<p class="portal-eyebrow">PROXIMITY ADS</p><h1 id="register-title">เริ่มต้นลงโฆษณา</h1><p>สร้างบัญชีเจ้าของโฆษณาเพื่อจัดการแคมเปญของคุณ</p>
+<form id="register"><fieldset id="register-fields" disabled>
+<label for="username">ชื่อผู้ใช้</label><input id="username" name="username" autocomplete="username" required>
+<label for="display-name">ชื่อที่แสดง</label><input id="display-name" name="display_name" autocomplete="name" required>
+<label for="email">อีเมล</label><input id="email" name="email" type="email" autocomplete="email" required>
+<label for="password">รหัสผ่าน</label><input id="password" name="password" type="password" autocomplete="new-password" required>
+<label for="confirm-password">ยืนยันรหัสผ่าน</label><input id="confirm-password" name="confirm_password" type="password" autocomplete="new-password" required>
+<button id="register-submit" class="primary" type="submit">สร้างบัญชีเจ้าของโฆษณา</button>
+</fieldset></form><p id="status" role="status" aria-live="polite">กำลังเตรียมแบบฟอร์ม…</p><p>มีบัญชีแล้ว? <a href="login.html?next=advertiser">เข้าสู่ระบบ</a></p>
+</section></main><script type="module" src="register.mjs"></script><script type="module" src="ui-shell.mjs"></script><script type="module" src="session-bar.mjs"></script></body></html>

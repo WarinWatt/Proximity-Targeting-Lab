@@ -5,7 +5,10 @@ export const entities={
  cycle_campaigns:['PK id','FK user_id','title, target, bid, budget, spent, sha, mime, media (<=8MB), funded, closed, escrow_minor, purchase_key UNIQUE, purchase_payload_hash; funded credit purchases'],
  cycle_runs:['PK id','FK station_id, campaign_id','request_key (unique), request_payload_sha256 (nullable for legacy requests), escrow_funded (legacy=false), target, price, state, trace_json, started_at, completed_at, review, reason; queued/playing price reserves campaign escrow'],
  cycle_ledger:['PK id','FK run_id','kind, amount, created_at; UNIQUE(run_id,kind); LIVE'],
- auth_users:['PK id','username (unique), password_hash, role; LIVE MariaDB users'],
+ auth_users:['PK id','username (unique), password_hash, primary role, active, is_demo, display_name, email, auth_version; users in MariaDB'],
+ user_roles:['PK/FK user_id + role','assigned customer/operator/reviewer/owner roles; active session role must be assigned'],
+ auth_admin_lock:['PK id','singleton transaction lock for last-owner protections'],
+ auth_rate_limits:['PK bucket','window_started, attempts; public authentication throttling'],
  central_stations:['PK id','name, active; LIVE MariaDB stations (five integrated stations; cycle station_id defaults to 1)'],
  auth_attempts:['PK id','ip, attempted_at; LIVE'],
  audit_events:['PK id','FK user_id','action, entity_id (logical reference), created_at; LIVE'],
@@ -108,6 +111,7 @@ Object.assign(entities,{
 entities.campaigns.push('FK customer_id');
 entities.playback_plans.push('FK assignment_id, price_id (nullable)');
 export const relations=[
+ {from:'user_roles',field:'user_id',to:'auth_users',cardinality:'N → 1'},
  {from:'wallet_accounts',field:'user_id',to:'auth_users',cardinality:'1 → 1'},
  {from:'wallet_ledger',field:'user_id',to:'wallet_accounts',cardinality:'N → 1'},
  {from:'wallet_ledger',field:'actor_id',to:'auth_users',cardinality:'N → 1'},
