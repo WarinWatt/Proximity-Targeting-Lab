@@ -3,6 +3,7 @@ import {getSession} from './session-client.mjs';
 
 const page=location.pathname.split('/').pop()||'index.html';
 const modes={
+ 'advertiser.html':['pilot','แคมเปญของฉัน · นำร่อง'],
  'index.html':['simulated','ข้อมูลจำลอง'],
  'audience-dashboard.html':['simulated','ข้อมูลจำลอง'],
  'campaigns.html':['simulated','ข้อมูลจำลอง'],
@@ -18,7 +19,7 @@ const modes={
 const [mode,modeLabel]=modes[page]||['research','งานวิจัย'];document.body.dataset.dataMode=mode;
 const publicResearch=[['index.html','จำลองการตัดสินใจ'],['audience-dashboard.html','ผู้ชมจำลอง'],['openpar.html','ห้องทดลองโมเดล'],['references.html','งานวิจัยอ้างอิง'],['architecture.html','สถาปัตยกรรม']];
 const roleLinks={
- customer:[['campaigns.html','แคมเปญของฉัน'],['campaigns.html#new','สร้างแคมเปญ'],['campaigns.html#billing','หลักฐานและบิล'],['single-screen.html','นำร่องจอเดียว']],
+ customer:[['advertiser.html','แคมเปญของฉัน'],['single-screen.html#purchase','สร้างแคมเปญ'],['advertiser.html','ผลการเล่นและบิล'],['campaigns.html','ทดลองราคา / A/B']],
  operator:[['operator.html','สถานีและอุปกรณ์'],['operator.html#incidents','เหตุขัดข้อง'],['single-screen.html','นำร่องจอเดียว'],['openpar.html','ตรวจโมเดลกล้อง']],
  reviewer:[['campaigns.html?view=review','คิวตรวจบิลและคืนเงิน'],['single-screen.html#evidence','หลักฐานการเล่น']],
  owner:[['owner.html','ภาพรวมระบบ'],['operator.html','สถานีและอุปกรณ์'],['campaigns.html?view=review','การเงินและข้อพิพาท'],['backend-console.html','ฐานข้อมูลขั้นสูง']]

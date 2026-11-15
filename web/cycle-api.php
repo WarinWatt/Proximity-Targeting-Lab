@@ -2,6 +2,15 @@
 // Included only after session, CSRF and user checks in api.php.
 function roleCycle(array $roles):void{global $user;if(!in_array($user['role'],$roles,true))reply(403,['error'=>'Role denied']);}
 function cycleInt($value,int $min,int $max):int{if(filter_var($value,FILTER_VALIDATE_INT)===false||$value<$min||$value>$max)reply(422,['error'=>'Invalid integer']);return (int)$value;}
+if($action==='cycle-advertiser'&&$method==='GET'){
+ roleCycle(['customer','owner']);
+ $q=$db->prepare("SELECT c.id,c.title,c.target,c.bid,c.budget,c.spent,c.sha,c.mime,COALESCE(r.held,0) held FROM cycle_campaigns c LEFT JOIN (SELECT campaign_id,SUM(price) held FROM cycle_runs WHERE state IN ('queued','playing') GROUP BY campaign_id) r ON r.campaign_id=c.id WHERE c.user_id=? ORDER BY c.id DESC");$q->execute([$user['id']]);$campaigns=$q->fetchAll(PDO::FETCH_ASSOC);
+ $q=$db->prepare("SELECT r.station_id,s.name,COUNT(*) runs,SUM(r.state='completed') completed,SUM(r.state='failed') failed FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id JOIN stations s ON s.id=r.station_id WHERE c.user_id=? GROUP BY r.station_id,s.name ORDER BY r.station_id");$q->execute([$user['id']]);$stations=$q->fetchAll(PDO::FETCH_ASSOC);
+ $q=$db->prepare("SELECT COALESCE(SUM(IF(l.kind='charge',l.amount,0)),0) charge,-COALESCE(SUM(IF(l.kind='refund',l.amount,0)),0) refund,COALESCE(SUM(l.amount),0) net FROM cycle_ledger l JOIN cycle_runs r ON r.id=l.run_id JOIN cycle_campaigns c ON c.id=r.campaign_id WHERE c.user_id=?");$q->execute([$user['id']]);$totals=$q->fetch(PDO::FETCH_ASSOC);
+ $q=$db->prepare('SELECT r.id,r.station_id,r.campaign_id,r.target,r.price,r.state,r.started_at,r.completed_at,r.review,r.reason,c.title FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id WHERE c.user_id=? ORDER BY r.id DESC LIMIT 100');$q->execute([$user['id']]);$runs=$q->fetchAll(PDO::FETCH_ASSOC);
+ $q=$db->prepare('SELECT a.run_id,a.clip_ms,a.looking_ms,a.stopped_ms,a.confidence,a.source,a.created_at FROM cycle_attention a JOIN cycle_runs r ON r.id=a.run_id JOIN cycle_campaigns c ON c.id=r.campaign_id WHERE c.user_id=? ORDER BY a.id DESC LIMIT 100');$q->execute([$user['id']]);
+ reply(200,['campaigns'=>$campaigns,'stations'=>$stations,'totals'=>$totals,'runs'=>$runs,'attention'=>$q->fetchAll(PDO::FETCH_ASSOC)]);
+}
 if($action==='cycle-list'&&$method==='GET'){
  $customer=$user['role']==='customer';$q=$db->prepare('SELECT id,user_id,title,target,bid,budget,spent,sha,mime FROM cycle_campaigns'.($customer?' WHERE user_id=?':'').' ORDER BY id');$q->execute($customer?[$user['id']]:[]);$c=$q->fetchAll(PDO::FETCH_ASSOC);
  $q=$db->prepare('SELECT r.* FROM cycle_runs r JOIN cycle_campaigns c ON c.id=r.campaign_id'.($customer?' WHERE c.user_id=?':'').' ORDER BY r.id DESC LIMIT 100');$q->execute($customer?[$user['id']]:[]);$runs=$q->fetchAll(PDO::FETCH_ASSOC);
